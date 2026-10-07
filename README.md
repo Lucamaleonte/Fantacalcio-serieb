@@ -45,6 +45,7 @@ Le migrazioni sono in `supabase/migrations/`, numerate in ordine. Ogni modifica 
    - `20261007120100_functions_triggers.sql` – funzioni interne, trigger (budget, ruoli, calendario)
    - `20261007120200_rpc.sql` – funzioni chiamate dall'app
    - `20261007120300_rls_grants.sql` – Row Level Security, vista classifica, GRANT
+   - `20261007120400_fix_grants.sql` – rimuove i permessi automatici sulle tabelle e lascia solo quelli previsti
 
 In alternativa, con la [Supabase CLI](https://supabase.com/docs/guides/cli): `supabase link` e poi `supabase db push`.
 
