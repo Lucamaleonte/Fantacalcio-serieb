@@ -1,12 +1,27 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+import { execSync } from 'node:child_process'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+
+// Versione mostrata nel Profilo: commit (GitHub Actions o git locale) e data di build
+function commitVersion(): string {
+  if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA.slice(0, 7)
+  try {
+    return execSync('git rev-parse --short HEAD').toString().trim()
+  } catch {
+    return 'sviluppo'
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig({
   // Deve coincidere con il nome del repository GitHub (GitHub Pages)
   base: '/Fantacalcio-serieb/',
+  define: {
+    __APP_VERSION__: JSON.stringify(commitVersion()),
+    __BUILD_DATE__: JSON.stringify(new Date().toISOString()),
+  },
   plugins: [
     react(),
     tailwindcss(),
