@@ -13,7 +13,8 @@ import { useCurrentLeague } from '../hooks/league'
 import { useAsyncData } from '../hooks/useAsyncData'
 import { errorMessage } from '../lib/errors'
 import { normalizeName } from '../lib/normalize'
-import { comparePlayers, fetchAllPlayers, ROLE_LABELS } from '../lib/players'
+import { fetchAllPlayers } from '../lib/players'
+import { comparePlayers, ROLE_LABELS } from '../lib/roles'
 import {
   parseCost,
   summarizeRoster,

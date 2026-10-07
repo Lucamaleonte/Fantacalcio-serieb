@@ -1,6 +1,6 @@
 // Calcoli sulla rosa: budget, conteggi per ruolo e controlli prima del salvataggio.
 // Gli stessi vincoli sono applicati anche dal database (trigger).
-import { ROLE_LABELS } from './players'
+import { ROLE_LABELS } from './roles'
 import type { League, Player, PlayerRole } from './types'
 
 export interface RosterEntry {
