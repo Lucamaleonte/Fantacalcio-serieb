@@ -9,6 +9,7 @@ import Classifica from './pages/Classifica'
 import Formazione from './pages/Formazione'
 import Giocatori from './pages/Giocatori'
 import Home from './pages/Home'
+import ImportaGiocatori from './pages/ImportaGiocatori'
 import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
 import Profilo from './pages/Profilo'
@@ -37,7 +38,7 @@ export default function App() {
 }
 
 function LeagueRoutes() {
-  const { loading, error, league, refresh } = useLeague()
+  const { loading, error, league, isAdmin, refresh } = useLeague()
 
   if (loading) return <LoadingScreen />
 
@@ -68,6 +69,16 @@ function LeagueRoutes() {
       <Route element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="giocatori" element={<Giocatori />} />
+        <Route
+          path="giocatori/importa"
+          element={
+            isAdmin ? (
+              <ImportaGiocatori />
+            ) : (
+              <Navigate to="/giocatori" replace />
+            )
+          }
+        />
         <Route path="rosa" element={<Rosa />} />
         <Route path="formazione" element={<Formazione />} />
         <Route path="classifica" element={<Classifica />} />
