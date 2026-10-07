@@ -49,6 +49,17 @@ export default function Profilo() {
       >
         Esci
       </Button>
+
+      <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+        Versione {__APP_VERSION__} ·{' '}
+        {new Date(__BUILD_DATE__).toLocaleString('it-IT', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })}
+      </p>
     </section>
   )
 }
