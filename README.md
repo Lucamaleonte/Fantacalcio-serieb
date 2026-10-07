@@ -47,6 +47,7 @@ Le migrazioni sono in `supabase/migrations/`, numerate in ordine. Ogni modifica 
    - `20261007120200_rpc.sql` – funzioni chiamate dall'app
    - `20261007120300_rls_grants.sql` – Row Level Security, vista classifica, GRANT
    - `20261007120400_fix_grants.sql` – rimuove i permessi automatici sulle tabelle e lascia solo quelli previsti
+   - `20261007120500_rosters_admin_only.sql` – le rose le modifica solo l'admin
 
 In alternativa, con la [Supabase CLI](https://supabase.com/docs/guides/cli): `supabase link` e poi `supabase db push`.
 
@@ -56,7 +57,7 @@ In alternativa, con la [Supabase CLI](https://supabase.com/docs/guides/cli): `su
 
 Dopo le migrazioni, esegui `supabase/tests/rls_test.sql` nel SQL Editor. Lo script crea utenti e dati di prova dentro una transazione e alla fine la annulla (non lascia nulla). Se termina senza errori i test sono superati; altrimenti compare `TEST FALLITO: <descrizione>`.
 
-Cosa verifica: un estraneo non vede nulla, il codice invito sbagliato è rifiutato, un membro non scrive sulle rose altrui né sulle impostazioni della lega, budget/limiti per ruolo/giocatore unico, rose bloccate, formazioni valide e chiuse dopo la scadenza (anche via API), visibilità delle formazioni altrui solo dopo la scadenza, voti e punteggi scrivibili solo dall'admin, ricalcolo senza duplicati, utente non loggato senza accesso.
+Cosa verifica: un estraneo non vede nulla, il codice invito sbagliato è rifiutato, un membro non modifica nessuna rosa (nemmeno la propria) né le impostazioni della lega, budget/limiti per ruolo/giocatore unico, formazioni valide e chiuse dopo la scadenza (anche via API), visibilità delle formazioni altrui solo dopo la scadenza, voti e punteggi scrivibili solo dall'admin, ricalcolo senza duplicati, utente non loggato senza accesso.
 
 ### Regole della lega (default)
 
@@ -79,6 +80,7 @@ Budget, rosa, moduli, sostituzioni, valore senza voto e soglie gol si cambiano d
 Note:
 
 - Si può creare **una sola lega** per progetto: chi la crea diventa admin, gli altri entrano con il codice invito.
+- L'asta si fa dal vivo: **solo l'admin** inserisce e modifica le rose (giocatore + costo pagato). I membri le vedono tutte in sola lettura. Per questo il blocco delle rose previsto dal piano non serve e non compare nell'app.
 - Il calendario si genera dopo che sono entrati tutti (Admin → Genera calendario). Se entra qualcuno dopo, va rigenerato: cambiano solo le giornate non ancora calcolate.
 - Il calcolo dei punteggi avviene nell'app dell'admin (funzione TypeScript testata) e viene salvato con `save_matchday_results`, che calcola gol e risultati e segna la giornata come calcolata.
 

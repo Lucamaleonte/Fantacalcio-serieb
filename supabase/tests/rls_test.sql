@@ -164,16 +164,23 @@ from (values ('P', 3), ('D', 5), ('C', 4), ('A', 3)) as v(r, cnt),
   generate_series(1, v.cnt) as n;
 select pg_temp.check((select count(*) from public.players where league_id = pg_temp.lg()) = 15, 'admin inserisce giocatori');
 
--- Rose
+-- Rose: solo l'admin le modifica (asta dal vivo, inserimento dell'admin)
 select pg_temp.login('b');
-insert into public.roster_entries (league_id, user_id, player_id, cost)
-values (pg_temp.lg(), pg_temp.uid('b'), pg_temp.pl('Test P1'), 10);
-
+select pg_temp.expect_error(
+  format('insert into public.roster_entries (league_id, user_id, player_id, cost) values (%L, %L, %L, 1)',
+    pg_temp.lg(), pg_temp.uid('b'), pg_temp.pl('Test P1')),
+  'membro modifica la propria rosa'
+);
 select pg_temp.expect_error(
   format('insert into public.roster_entries (league_id, user_id, player_id, cost) values (%L, %L, %L, 1)',
     pg_temp.lg(), pg_temp.uid('a'), pg_temp.pl('Test A3')),
   'membro aggiunge giocatori alla rosa altrui'
 );
+
+select pg_temp.login('a');
+insert into public.roster_entries (league_id, user_id, player_id, cost)
+values (pg_temp.lg(), pg_temp.uid('b'), pg_temp.pl('Test P1'), 10);
+
 select pg_temp.expect_error(
   format('insert into public.roster_entries (league_id, user_id, player_id, cost) values (%L, %L, %L, 1000)',
     pg_temp.lg(), pg_temp.uid('b'), pg_temp.pl('Test P2')),
@@ -184,19 +191,37 @@ select pg_temp.expect_error(
     pg_temp.lg(), pg_temp.uid('b'), pg_temp.pl('Test P2')),
   'costo negativo accettato'
 );
-
-select pg_temp.login('d');
 select pg_temp.expect_error(
   format('insert into public.roster_entries (league_id, user_id, player_id, cost) values (%L, %L, %L, 1)',
     pg_temp.lg(), pg_temp.uid('d'), pg_temp.pl('Test P1')),
   'giocatore in due squadre'
 );
 
+-- Modifica del costo: consentita all'admin, sempre entro il budget
+update public.roster_entries set cost = 20
+where league_id = pg_temp.lg() and player_id = pg_temp.pl('Test P1');
+select pg_temp.check(
+  (select cost from public.roster_entries where league_id = pg_temp.lg() and player_id = pg_temp.pl('Test P1')) = 20,
+  'admin modifica il costo'
+);
+select pg_temp.expect_error(
+  format('update public.roster_entries set cost = 1000 where league_id = %L and player_id = %L',
+    pg_temp.lg(), pg_temp.pl('Test P1')),
+  'budget superato in modifica'
+);
+
+-- Il membro non modifica né cancella nemmeno la propria rosa
+select pg_temp.login('b');
+update public.roster_entries set cost = 0 where user_id = pg_temp.uid('b');
+delete from public.roster_entries where user_id = pg_temp.uid('b');
+select pg_temp.check(
+  (select cost from public.roster_entries where league_id = pg_temp.lg() and player_id = pg_temp.pl('Test P1')) = 20,
+  'membro modifica o cancella la propria rosa'
+);
+
 -- Limite per ruolo (portieri = 2)
 select pg_temp.login('a');
 update public.leagues set n_gk = 2 where id = pg_temp.lg();
-
-select pg_temp.login('b');
 insert into public.roster_entries (league_id, user_id, player_id, cost)
 values (pg_temp.lg(), pg_temp.uid('b'), pg_temp.pl('Test P2'), 1);
 select pg_temp.expect_error(
@@ -206,6 +231,7 @@ select pg_temp.expect_error(
 );
 
 -- Il membro non modifica le impostazioni della lega
+select pg_temp.login('b');
 update public.leagues set n_gk = 10 where id = pg_temp.lg();
 select pg_temp.check((select n_gk from public.leagues where id = pg_temp.lg()) = 2, 'membro modifica la lega');
 select pg_temp.expect_error(
@@ -230,18 +256,9 @@ select pg_temp.check(
   'membro modifica o cancella la rosa altrui'
 );
 
--- Rose bloccate: il membro non scrive, l'admin sì
+-- L'admin modifica le rose anche se bloccate
 select pg_temp.login('a');
 update public.leagues set rosters_locked = true where id = pg_temp.lg();
-
-select pg_temp.login('b');
-select pg_temp.expect_error(
-  format('insert into public.roster_entries (league_id, user_id, player_id, cost) values (%L, %L, %L, 1)',
-    pg_temp.lg(), pg_temp.uid('b'), pg_temp.pl('Test D1')),
-  'inserimento con rose bloccate'
-);
-
-select pg_temp.login('a');
 insert into public.roster_entries (league_id, user_id, player_id, cost)
 select pg_temp.lg(), pg_temp.uid('b'), id, 1
 from public.players
