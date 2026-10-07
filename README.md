@@ -58,19 +58,19 @@ Cosa verifica: un estraneo non vede nulla, il codice invito sbagliato è rifiuta
 
 ### Regole della lega (default)
 
-| Regola | Valore |
-|---|---|
-| Budget | 500 |
-| Rosa | 3 P, 8 D, 8 C, 6 A |
-| Moduli | 3-4-3, 3-5-2, 4-3-3, 4-4-2, 4-5-1, 5-3-2 |
-| Sostituzioni massime | 5 (stesso ruolo, in ordine di panchina) |
-| Titolare senza voto e senza sostituto | 0 |
-| Squadra senza formazione | 0 fantapunti |
-| Giocatore in più squadre | No |
-| Classifica | Scontri diretti: vittoria 3, pareggio 1, sconfitta 0 |
-| Gol | 66 fantapunti = 1 gol, poi +1 ogni 6 punti (72 = 2, 78 = 3…) |
-| Parità in classifica | Somma fantapunti, poi differenza reti |
-| Calendario | Girone all'italiana casuale, ripetuto con casa/trasferta invertite |
+| Regola                                | Valore                                                             |
+| ------------------------------------- | ------------------------------------------------------------------ |
+| Budget                                | 500                                                                |
+| Rosa                                  | 3 P, 8 D, 8 C, 6 A                                                 |
+| Moduli                                | 3-4-3, 3-5-2, 4-3-3, 4-4-2, 4-5-1, 5-3-2                           |
+| Sostituzioni massime                  | 5 (stesso ruolo, in ordine di panchina)                            |
+| Titolare senza voto e senza sostituto | 0                                                                  |
+| Squadra senza formazione              | 0 fantapunti                                                       |
+| Giocatore in più squadre              | No                                                                 |
+| Classifica                            | Scontri diretti: vittoria 3, pareggio 1, sconfitta 0               |
+| Gol                                   | 66 fantapunti = 1 gol, poi +1 ogni 6 punti (72 = 2, 78 = 3…)       |
+| Parità in classifica                  | Somma fantapunti, poi differenza reti                              |
+| Calendario                            | Girone all'italiana casuale, ripetuto con casa/trasferta invertite |
 
 Budget, rosa, moduli, sostituzioni, valore senza voto e soglie gol si cambiano dalla pagina Admin.
 
