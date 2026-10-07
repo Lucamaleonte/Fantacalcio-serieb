@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
+import Admin from './pages/Admin'
 import LeagueProvider from './components/LeagueProvider'
 import { Alert, Button, LoadingScreen } from './components/ui'
 import { useAuth } from './hooks/auth'
@@ -83,6 +84,10 @@ function LeagueRoutes() {
         <Route path="formazione" element={<Formazione />} />
         <Route path="classifica" element={<Classifica />} />
         <Route path="profilo" element={<Profilo />} />
+        <Route
+          path="admin"
+          element={isAdmin ? <Admin /> : <Navigate to="/" replace />}
+        />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

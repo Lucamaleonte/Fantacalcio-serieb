@@ -30,6 +30,14 @@ const KNOWN_ERRORS: [RegExp, string][] = [
     /players_league_id_name_real_team_key/i,
     'Esiste già un giocatore con questo nome in questa squadra',
   ],
+  [
+    /matchdays_league_id_number_key/i,
+    'Esiste già una giornata con questo numero',
+  ],
+  [
+    /matchdays_number_check/i,
+    'Il numero della giornata deve essere tra 1 e 60',
+  ],
   [/duplicate key/i, 'Elemento già presente'],
 ]
 

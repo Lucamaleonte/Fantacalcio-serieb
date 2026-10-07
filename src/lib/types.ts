@@ -37,6 +37,27 @@ export interface Player {
   active: boolean
 }
 
+export type MatchdayStatus = 'open' | 'locked' | 'scored'
+
+export interface Matchday {
+  id: string
+  league_id: string
+  number: number
+  deadline: string
+  status: MatchdayStatus
+}
+
+export interface Fixture {
+  id: string
+  matchday_id: string
+  home_user_id: string
+  away_user_id: string
+  home_points: number | null
+  away_points: number | null
+  home_goals: number | null
+  away_goals: number | null
+}
+
 export interface Profile {
   id: string
   display_name: string

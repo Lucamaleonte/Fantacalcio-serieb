@@ -11,7 +11,10 @@ export const ROLE_LABELS = {
 const ROLE_ORDER = { P: 0, D: 1, C: 2, A: 3 }
 
 // Ordine classico: portieri, difensori, centrocampisti, attaccanti, poi per nome
-export function comparePlayers(a: Player, b: Player): number {
+export function comparePlayers(
+  a: Pick<Player, 'role' | 'name'>,
+  b: Pick<Player, 'role' | 'name'>,
+): number {
   return (
     ROLE_ORDER[a.role] - ROLE_ORDER[b.role] ||
     a.name.localeCompare(b.name, 'it')
