@@ -1,4 +1,5 @@
 import { useCallback, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import PageTitle from '../components/PageTitle'
 import { Alert, Button, Card, Field, Select, Sheet } from '../components/ui'
 import { useCurrentLeague } from '../hooks/league'
@@ -190,11 +191,11 @@ function MatchdaysCard({
           {data.matchdays.map((m) => {
             const fixtures = data.fixtures.filter((f) => f.matchday_id === m.id)
             return (
-              <li key={m.id}>
+              <li key={m.id} className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setEditing(m)}
-                  className="w-full py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800"
+                  className="min-w-0 flex-1 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
                   <span className="flex items-center justify-between gap-2">
                     <span className="font-semibold">Giornata {m.number}</span>
@@ -216,6 +217,12 @@ function MatchdaysCard({
                     </span>
                   )}
                 </button>
+                <Link
+                  to={`/admin/giornata/${m.id}`}
+                  className="flex min-h-11 shrink-0 items-center rounded-xl border border-slate-300 px-3 text-sm font-semibold dark:border-slate-700"
+                >
+                  Voti ›
+                </Link>
               </li>
             )
           })}

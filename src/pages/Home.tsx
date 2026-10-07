@@ -11,11 +11,12 @@ import {
   isLineupOpen,
   pickCurrentMatchday,
 } from '../lib/matchdays'
+import { sortStandings, type Standing } from '../lib/standings'
 import { supabase } from '../lib/supabase'
 import type { Fixture, Matchday } from '../lib/types'
 
 async function loadHome(leagueId: string, userId: string) {
-  const [matchdays, lineups, fixtures, members] = await Promise.all([
+  const [matchdays, lineups, fixtures, members, standings] = await Promise.all([
     supabase
       .from('matchdays')
       .select('id, league_id, number, deadline, status')
@@ -36,10 +37,12 @@ async function loadHome(leagueId: string, userId: string) {
       .from('league_members')
       .select('user_id, team_name')
       .eq('league_id', leagueId),
+    supabase.from('standings').select('*').eq('league_id', leagueId),
   ])
-  for (const r of [matchdays, lineups, fixtures, members])
+  for (const r of [matchdays, lineups, fixtures, members, standings])
     if (r.error) throw r.error
   return {
+    standings: sortStandings(standings.data as Standing[]),
     matchdays: matchdays.data as Matchday[],
     withLineup: new Set(
       (lineups.data as { matchday_id: string }[]).map((l) => l.matchday_id),
@@ -146,6 +149,39 @@ export default function Home() {
           </div>
         )}
       </Card>
+
+      {data && data.standings.length > 0 && (
+        <Card title="Classifica">
+          {data.standings.every((s) => s.played === 0) ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              La classifica parte dopo la prima giornata calcolata.
+            </p>
+          ) : (
+            <ol className="space-y-1 text-sm">
+              {data.standings.slice(0, 6).map((s, i) => (
+                <li
+                  key={s.user_id}
+                  className={`flex items-center gap-2 rounded-lg px-2 py-1.5 ${
+                    s.user_id === membership.user_id
+                      ? 'bg-green-50 font-semibold dark:bg-green-950/50'
+                      : ''
+                  }`}
+                >
+                  <span className="w-5 text-slate-500">{i + 1}</span>
+                  <span className="min-w-0 flex-1 truncate">{s.team_name}</span>
+                  <span className="font-bold tabular-nums">{s.points} pt</span>
+                </li>
+              ))}
+            </ol>
+          )}
+          <Link
+            to="/classifica"
+            className="mt-2 inline-block text-sm font-semibold text-green-700 underline dark:text-green-400"
+          >
+            Classifica completa e risultati
+          </Link>
+        </Card>
+      )}
 
       {isAdmin && (
         <Card title="Invita gli amici">
