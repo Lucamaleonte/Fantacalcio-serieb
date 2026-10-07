@@ -28,6 +28,15 @@ export interface Membership {
   role: MemberRole
 }
 
+export interface Player {
+  id: string
+  league_id: string
+  name: string
+  role: PlayerRole
+  real_team: string
+  active: boolean
+}
+
 export interface Profile {
   id: string
   display_name: string

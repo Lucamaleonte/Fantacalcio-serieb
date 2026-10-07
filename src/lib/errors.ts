@@ -26,6 +26,10 @@ const KNOWN_ERRORS: [RegExp, string][] = [
   ],
   [/row-level security|permission denied/i, 'Operazione non consentita'],
   [/league_members_league_id_team_name_key/i, 'Nome squadra già usato'],
+  [
+    /players_league_id_name_real_team_key/i,
+    'Esiste già un giocatore con questo nome in questa squadra',
+  ],
   [/duplicate key/i, 'Elemento già presente'],
 ]
 

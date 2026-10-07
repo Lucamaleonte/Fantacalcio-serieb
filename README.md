@@ -24,6 +24,7 @@ Stack: Vite + React + TypeScript, Tailwind CSS, Supabase (Auth + Postgres + RLS)
 | `npm run dev`    | Avvia l'app in locale                               |
 | `npm run build`  | Controllo dei tipi e build di produzione in `dist/` |
 | `npm run lint`   | Controllo del codice (oxlint)                       |
+| `npm test`       | Test unitari (Vitest)                               |
 | `npm run format` | Formatta il codice (Prettier)                       |
 
 ## Sicurezza

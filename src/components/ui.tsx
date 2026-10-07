@@ -1,8 +1,11 @@
-import type {
-  ButtonHTMLAttributes,
-  InputHTMLAttributes,
-  ReactNode,
+import {
+  useEffect,
+  type ButtonHTMLAttributes,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type SelectHTMLAttributes,
 } from 'react'
+import type { PlayerRole } from '../lib/types'
 
 // Componenti base dell'interfaccia, condivisi da tutte le pagine
 
@@ -39,6 +42,91 @@ export function Field({
         </span>
       )}
     </label>
+  )
+}
+
+const selectClass =
+  'block w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-base outline-none focus:border-green-600 focus:ring-2 focus:ring-green-600/30 dark:border-slate-700 dark:bg-slate-950'
+
+export function Select({
+  label,
+  children,
+  ...props
+}: { label?: string } & SelectHTMLAttributes<HTMLSelectElement>) {
+  const select = (
+    <select className={selectClass} {...props}>
+      {children}
+    </select>
+  )
+  if (!label) return select
+  return (
+    <label className="block">
+      <span className="mb-1 block text-sm font-medium">{label}</span>
+      {select}
+    </label>
+  )
+}
+
+const roleStyles: Record<PlayerRole, string> = {
+  P: 'bg-amber-400 text-amber-950',
+  D: 'bg-green-600 text-white',
+  C: 'bg-blue-600 text-white',
+  A: 'bg-red-600 text-white',
+}
+
+export function RoleBadge({ role }: { role: PlayerRole }) {
+  return (
+    <span
+      className={`inline-flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-bold ${roleStyles[role]}`}
+      aria-label={`Ruolo ${role}`}
+    >
+      {role}
+    </span>
+  )
+}
+
+// Pannello che sale dal basso (modifica rapida da telefono)
+export function Sheet({
+  title,
+  onClose,
+  children,
+}: {
+  title: string
+  onClose: () => void
+  children: ReactNode
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-30 flex items-end justify-center bg-black/40 sm:items-center"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-t-2xl bg-white p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] shadow-xl sm:rounded-2xl dark:bg-slate-900"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold">{title}</h2>
+          <button
+            type="button"
+            className="flex size-11 items-center justify-center rounded-full text-2xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+            onClick={onClose}
+            aria-label="Chiudi"
+          >
+            ×
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
   )
 }
 
