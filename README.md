@@ -32,7 +32,18 @@ Stack: Vite + React + TypeScript, Tailwind CSS, Supabase (Auth + Postgres + RLS)
 - Il file `.env` non va mai committato (è nel `.gitignore`).
 - La protezione dei dati è garantita dalle Row Level Security sul database.
 
+## Deploy
+
+Ogni push su `main` pubblica il sito su GitHub Pages tramite `.github/workflows/deploy.yml`:
+<https://lucamaleonte.github.io/Fantacalcio-serieb/>
+
+Il workflow legge `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` dalle **Variables** del repository (Settings → Secrets and variables → Actions → Variables).
+
 ## Scelte di default
 
 - Lint con **oxlint** (incluso nel template Vite) al posto di ESLint: più veloce e senza configurazione aggiuntiva.
 - Tema chiaro/scuro automatico, in base all'impostazione del telefono.
+
+## Licenza
+
+[MIT](LICENSE)
