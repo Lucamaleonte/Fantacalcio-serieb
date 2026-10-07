@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { errorMessage } from '../lib/errors'
-import { ROLE_LABELS } from '../lib/players'
+import { ROLE_LABELS } from '../lib/roles'
 import { supabase } from '../lib/supabase'
 import type { Player, PlayerRole } from '../lib/types'
 import { Alert, Button, Field, Select } from './ui'

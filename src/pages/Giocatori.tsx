@@ -13,7 +13,8 @@ import {
 import { useCurrentLeague } from '../hooks/league'
 import { useAsyncData } from '../hooks/useAsyncData'
 import { normalizeName } from '../lib/normalize'
-import { comparePlayers, fetchAllPlayers } from '../lib/players'
+import { fetchAllPlayers } from '../lib/players'
+import { comparePlayers } from '../lib/roles'
 import { supabase } from '../lib/supabase'
 import type { Player, PlayerRole } from '../lib/types'
 
