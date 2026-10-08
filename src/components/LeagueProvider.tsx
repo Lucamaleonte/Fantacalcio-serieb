@@ -16,7 +16,7 @@ interface LeagueData {
 async function fetchLeague(userId: string): Promise<LeagueData> {
   const { data, error } = await supabase
     .from('league_members')
-    .select('league_id, user_id, team_name, role, leagues(*)')
+    .select('league_id, user_id, team_name, role, logo_path, leagues(*)')
     .eq('user_id', userId)
     .order('joined_at')
     .limit(1)
@@ -33,6 +33,7 @@ async function fetchLeague(userId: string): Promise<LeagueData> {
       user_id: data.user_id,
       team_name: data.team_name,
       role: data.role,
+      logo_path: data.logo_path,
     },
   }
 }

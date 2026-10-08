@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import PageTitle from '../components/PageTitle'
+import TeamLogo from '../components/TeamLogo'
 import { Alert, Card } from '../components/ui'
 import { useCurrentLeague } from '../hooks/league'
 import { useAsyncData } from '../hooks/useAsyncData'
@@ -35,7 +36,7 @@ async function loadHome(leagueId: string, userId: string) {
       .or(`home_user_id.eq.${userId},away_user_id.eq.${userId}`),
     supabase
       .from('league_members')
-      .select('user_id, team_name')
+      .select('user_id, team_name, logo_path')
       .eq('league_id', leagueId),
     supabase.from('standings').select('*').eq('league_id', leagueId),
   ])
@@ -53,6 +54,11 @@ async function loadHome(leagueId: string, userId: string) {
         m.user_id,
         m.team_name,
       ]),
+    ),
+    logos: new Map(
+      (members.data as { user_id: string; logo_path: string | null }[]).map(
+        (m) => [m.user_id, m.logo_path],
+      ),
     ),
   }
 }
@@ -104,7 +110,12 @@ export default function Home() {
         ) : (
           <div className="space-y-3">
             {opponentId && (
-              <p>
+              <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                <TeamLogo
+                  path={data.logos.get(opponentId)}
+                  name={data.teams.get(opponentId) ?? ''}
+                  size="md"
+                />
                 {fixture!.home_user_id === membership.user_id
                   ? 'In casa contro '
                   : 'In trasferta contro '}
@@ -182,6 +193,11 @@ export default function Home() {
                   }`}
                 >
                   <span className="w-5 text-slate-500">{i + 1}</span>
+                  <TeamLogo
+                    path={data.logos.get(s.user_id)}
+                    name={s.team_name}
+                    size="xs"
+                  />
                   <span className="min-w-0 flex-1 truncate">{s.team_name}</span>
                   <span className="font-bold tabular-nums">{s.points} pt</span>
                 </li>

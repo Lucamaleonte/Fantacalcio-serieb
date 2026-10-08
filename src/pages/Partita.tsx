@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import PageTitle from '../components/PageTitle'
+import TeamLogo from '../components/TeamLogo'
 import { Alert, Button, Card, RoleBadge } from '../components/ui'
 import { useCurrentLeague } from '../hooks/league'
 import { useAsyncData } from '../hooks/useAsyncData'
@@ -46,7 +47,7 @@ async function loadPartita(fixtureId: string, leagueId: string) {
   const [members, lineups, scores] = await Promise.all([
     supabase
       .from('league_members')
-      .select('user_id, team_name')
+      .select('user_id, team_name, logo_path')
       .eq('league_id', leagueId)
       .in('user_id', users),
     supabase
@@ -86,10 +87,13 @@ async function loadPartita(fixtureId: string, leagueId: string) {
     fixture: f,
     matchday: f.matchday,
     teams: new Map(
-      (members.data as { user_id: string; team_name: string }[]).map((m) => [
-        m.user_id,
-        m.team_name,
-      ]),
+      (
+        members.data as {
+          user_id: string
+          team_name: string
+          logo_path: string | null
+        }[]
+      ).map((m) => [m.user_id, { name: m.team_name, logo: m.logo_path }]),
     ),
     lineups: byUser,
     scores: new Map(
@@ -157,7 +161,8 @@ export default function Partita() {
   const involved = f.home_user_id === me || f.away_user_id === me
   const open = isLineupOpen(matchday, now)
   const scored = matchday.status === 'scored'
-  const name = (userId: string) => data.teams.get(userId) ?? '?'
+  const team = (userId: string) =>
+    data.teams.get(userId) ?? { name: '?', logo: null }
 
   return (
     <section className="space-y-4">
@@ -168,11 +173,11 @@ export default function Partita() {
 
       <Card>
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-          <TeamName name={name(f.home_user_id)} mine={f.home_user_id === me} />
+          <TeamName {...team(f.home_user_id)} mine={f.home_user_id === me} />
           <span className="rounded-lg bg-slate-100 px-3 py-1.5 text-center text-xl font-bold tabular-nums dark:bg-slate-800">
             {scored ? `${f.home_goals ?? 0} - ${f.away_goals ?? 0}` : 'vs'}
           </span>
-          <TeamName name={name(f.away_user_id)} mine={f.away_user_id === me} />
+          <TeamName {...team(f.away_user_id)} mine={f.away_user_id === me} />
           {scored && (
             <>
               <span className="text-center text-xs text-slate-500">
@@ -234,13 +239,22 @@ export default function Partita() {
   )
 }
 
-function TeamName({ name, mine }: { name: string; mine: boolean }) {
+function TeamName({
+  name,
+  logo,
+  mine,
+}: {
+  name: string
+  logo: string | null
+  mine: boolean
+}) {
   return (
     <span
-      className={`min-w-0 text-center font-semibold break-words ${
+      className={`flex min-w-0 flex-col items-center gap-2 text-center font-semibold break-words ${
         mine ? 'text-green-700 dark:text-green-400' : ''
       }`}
     >
+      <TeamLogo path={logo} name={name} size="lg" />
       {name}
     </span>
   )

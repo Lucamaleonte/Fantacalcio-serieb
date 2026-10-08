@@ -26,6 +26,8 @@ export interface Membership {
   user_id: string
   team_name: string
   role: MemberRole
+  // Percorso nel bucket team-logos (null = nessun logo)
+  logo_path: string | null
 }
 
 export interface Player {
