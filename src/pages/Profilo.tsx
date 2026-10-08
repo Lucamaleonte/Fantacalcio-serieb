@@ -1,9 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import PageTitle from '../components/PageTitle'
+import TeamLogo from '../components/TeamLogo'
 import { Alert, Button, Card, Field } from '../components/ui'
 import { useAuth } from '../hooks/auth'
 import { useCurrentLeague } from '../hooks/league'
 import { errorMessage } from '../lib/errors'
+import { LOGO_BUCKET, logoPath } from '../lib/logo'
+import { resizeLogo } from '../lib/logoImage'
 import { supabase } from '../lib/supabase'
 
 export default function Profilo() {
@@ -15,6 +18,13 @@ export default function Profilo() {
       <PageTitle>Profilo</PageTitle>
 
       <Card title="La tua squadra">
+        <LogoForm
+          leagueId={league.id}
+          userId={membership.user_id}
+          teamName={membership.team_name}
+          current={membership.logo_path}
+          onSaved={refresh}
+        />
         <TeamNameForm
           leagueId={league.id}
           userId={membership.user_id}
@@ -61,6 +71,116 @@ export default function Profilo() {
         })}
       </p>
     </section>
+  )
+}
+
+// Logo della squadra: ridotto nel browser e caricato nella propria cartella
+function LogoForm({
+  leagueId,
+  userId,
+  teamName,
+  current,
+  onSaved,
+}: {
+  leagueId: string
+  userId: string
+  teamName: string
+  current: string | null
+  onSaved: () => Promise<void>
+}) {
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState<{
+    kind: 'error' | 'success'
+    text: string
+  } | null>(null)
+
+  async function savePath(path: string | null) {
+    const { error } = await supabase
+      .from('league_members')
+      .update({ logo_path: path })
+      .eq('league_id', leagueId)
+      .eq('user_id', userId)
+    return error
+  }
+
+  // Il vecchio file non serve più (se la cancellazione fallisce resta solo un file orfano)
+  async function removeOld() {
+    if (current) await supabase.storage.from(LOGO_BUCKET).remove([current])
+  }
+
+  async function upload(file: File) {
+    setBusy(true)
+    setMessage(null)
+    try {
+      const { blob, type } = await resizeLogo(file)
+      const path = logoPath(leagueId, userId, Date.now(), type)
+      const up = await supabase.storage
+        .from(LOGO_BUCKET)
+        .upload(path, blob, { contentType: type, cacheControl: '31536000' })
+      if (up.error) throw up.error
+      const error = await savePath(path)
+      if (error) {
+        await supabase.storage.from(LOGO_BUCKET).remove([path])
+        throw error
+      }
+      await removeOld()
+      setMessage({ kind: 'success', text: 'Logo salvato' })
+      await onSaved()
+    } catch (error) {
+      setMessage({ kind: 'error', text: errorMessage(error) })
+    }
+    setBusy(false)
+  }
+
+  async function remove() {
+    setBusy(true)
+    setMessage(null)
+    const error = await savePath(null)
+    if (error) {
+      setMessage({ kind: 'error', text: errorMessage(error) })
+    } else {
+      await removeOld()
+      setMessage({ kind: 'success', text: 'Logo rimosso' })
+      await onSaved()
+    }
+    setBusy(false)
+  }
+
+  return (
+    <div className="mb-4 space-y-3">
+      <div className="flex items-center gap-4">
+        <TeamLogo path={current} name={teamName} size="lg" />
+        <div className="flex flex-wrap gap-2">
+          <label
+            className={`flex min-h-11 cursor-pointer items-center rounded-xl border border-slate-300 bg-white px-4 font-semibold hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800 ${
+              busy ? 'pointer-events-none opacity-60' : ''
+            }`}
+          >
+            {busy ? 'Attendere…' : current ? 'Cambia logo' : 'Carica logo'}
+            <input
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              disabled={busy}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                e.target.value = ''
+                if (file) void upload(file)
+              }}
+            />
+          </label>
+          {current && (
+            <Button variant="danger" disabled={busy} onClick={remove}>
+              Rimuovi
+            </Button>
+          )}
+        </div>
+      </div>
+      <p className="text-xs text-slate-500 dark:text-slate-400">
+        Si usa il quadrato centrale dell&apos;immagine, ridotto a 256 px.
+      </p>
+      {message && <Alert kind={message.kind}>{message.text}</Alert>}
+    </div>
   )
 }
 

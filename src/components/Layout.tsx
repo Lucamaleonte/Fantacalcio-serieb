@@ -1,6 +1,7 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useCurrentLeague } from '../hooks/league'
 import BottomNav from './BottomNav'
+import TeamLogo from './TeamLogo'
 
 export default function Layout() {
   const { league, membership, isAdmin } = useCurrentLeague()
@@ -28,8 +29,13 @@ export default function Layout() {
           )}
           <Link
             to="/profilo"
-            className="flex min-h-11 max-w-[45vw] items-center rounded-full px-3 text-sm font-semibold text-green-700 dark:text-green-400"
+            className="flex min-h-11 max-w-[45vw] items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-green-700 dark:text-green-400"
           >
+            <TeamLogo
+              path={membership.logo_path}
+              name={membership.team_name}
+              size="xs"
+            />
             <span className="truncate">{membership.team_name}</span>&nbsp;›
           </Link>
         </div>

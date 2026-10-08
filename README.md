@@ -70,7 +70,7 @@ Solo se non è calcolata. Per una giornata già calcolata: Admin → toccala →
 - **Classifica:** punti, partite, gol, fantapunti; risultati di ogni giornata con il dettaglio (titolari, voti, sostituzioni).
 - **Calendario** (scheda accanto a Classifica, o Home → Calendario completo): tutte le giornate con gli avversari, anche quelle non ancora create (33 in tutto, dalla 6ª alla 38ª di Serie B, calcolate dal sorteggio), e i risultati di quelle calcolate. Si può scegliere tra "Le mie partite" e "Tutte le partite".
 - **Sfida** (toccando una partita nel Calendario, il risultato in Classifica o "Vedi la sfida" in Home): le due formazioni affiancate, in sola lettura; dopo il calcolo con voti, sostituzioni e totale. Le formazioni sono visibili a tutti i membri anche prima della scadenza (finché è aperta si possono ancora cambiare); ognuno modifica solo la propria.
-- **Profilo:** nome squadra, nome utente, codice invito, versione dell'app, Esci.
+- **Profilo:** logo della squadra (**Carica logo** / **Cambia logo** / **Rimuovi**), nome squadra, nome utente, codice invito, versione dell'app, Esci. Il logo si vede in alto accanto al nome, in Home, Classifica, Calendario e nella Sfida; senza logo compare un cerchio con le iniziali. Ognuno cambia solo il proprio (nemmeno l'admin cambia quello degli altri).
 
 ## Installare l'app sul telefono
 
@@ -90,6 +90,8 @@ Per riattivarlo:
 3. Dopo qualche minuto il sito torna a funzionare, con tutti i dati.
 
 Un progetto in pausa si può riattivare dalla dashboard **entro 1 anno**; dopo restano solo i backup scaricabili. Per evitare le pause serve il piano a pagamento. Dettagli: [Project Pausing](https://supabase.com/docs/guides/platform/free-project-pausing).
+
+**Spazio per i loghi:** il piano gratuito ha 1 GB per i file. Ogni logo viene ritagliato e ridotto nel telefono a 256×256 px (pochi KB, al massimo 512 KB) prima del caricamento, e quello vecchio viene cancellato: con 6 squadre lo spazio usato è trascurabile. Se l'admin rimuove una squadra, il suo logo resta nello Storage (si può cancellare a mano da Supabase → Storage → `team-logos`).
 
 ## Regole della lega
 
@@ -139,6 +141,7 @@ Le migrazioni sono in `supabase/migrations/`, in ordine di nome. Ogni modifica a
 | `20261007120400_fix_grants.sql`             | Toglie i permessi automatici sulle tabelle e lascia solo quelli previsti           |
 | `20261007120500_rosters_admin_only.sql`     | Rose modificabili solo dall'admin                                                  |
 | `20261008120000_lineups_visible_to_all.sql` | Formazioni di tutti visibili anche prima della scadenza                            |
+| `20261008130000_team_logos.sql`             | Loghi: colonna `logo_path`, bucket Storage `team-logos` e regole di caricamento    |
 
 **Eseguirle:** Supabase → **SQL Editor** → **New query** → incolla il contenuto del file → **Run**, un file alla volta e in ordine. In alternativa, con la [Supabase CLI](https://supabase.com/docs/guides/cli): `supabase link` e `supabase db push`.
 
@@ -179,6 +182,7 @@ I moduli in `src/lib` usati dai test non devono importare il client Supabase: in
 ## Sicurezza
 
 - Nel frontend c'è **solo** la chiave publishable/anon di Supabase; nessun segreto nel repository (`.env` è nel `.gitignore`).
+- I loghi sono in un bucket **pubblico**: chi ha il link di un'immagine la vede (i link contengono codici non indovinabili). Caricare e cancellare si può solo nella propria cartella `<lega>/<utente>/`.
 - La protezione dei dati è garantita **solo** dal database: Row Level Security su ogni tabella, GRANT espliciti per colonna, trigger per i vincoli e funzioni `security definer` che controllano chi le chiama. Il sito è pubblico; i dati li vede solo chi è loggato e membro della lega.
 - Formazioni, voti e risultati si scrivono solo tramite le funzioni RPC, che ripetono tutti i controlli (scadenza compresa, con l'orario del server).
 

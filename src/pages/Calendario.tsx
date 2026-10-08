@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import PageTitle from '../components/PageTitle'
 import StandingsTabs from '../components/StandingsTabs'
+import TeamLogo from '../components/TeamLogo'
 import { Alert, Button, Card } from '../components/ui'
 import { useCurrentLeague } from '../hooks/league'
 import { useAsyncData } from '../hooks/useAsyncData'
@@ -48,7 +49,7 @@ async function loadCalendario(leagueId: string) {
       .eq('league_id', leagueId),
     supabase
       .from('league_members')
-      .select('user_id, team_name, calendar_position')
+      .select('user_id, team_name, calendar_position, logo_path')
       .eq('league_id', leagueId),
   ])
   for (const r of [matchdays, fixtures, members]) if (r.error) throw r.error
@@ -56,12 +57,14 @@ async function loadCalendario(leagueId: string) {
     user_id: string
     team_name: string
     calendar_position: number | null
+    logo_path: string | null
   }[]
   return {
     matchdays: matchdays.data as Matchday[],
     fixtures: fixtures.data as Fixture[],
     teamOrder: calendarTeams(memberRows),
     teams: new Map(memberRows.map((m) => [m.user_id, m.team_name])),
+    logos: new Map(memberRows.map((m) => [m.user_id, m.logo_path])),
   }
 }
 
@@ -240,6 +243,14 @@ export default function Calendario() {
                         <span className="w-8 shrink-0 font-bold text-slate-500">
                           G{r.number}
                         </span>
+                        {m && (
+                          <TeamLogo
+                            path={data.logos.get(
+                              m.home === me ? m.away : m.home,
+                            )}
+                            name={name(m.home === me ? m.away : m.home)}
+                          />
+                        )}
                         <span className="min-w-0 flex-1">
                           {m ? (
                             <>
@@ -311,14 +322,28 @@ export default function Calendario() {
                                       : ''
                                   }`}
                                 >
-                                  <span className="truncate text-right">
-                                    {name(m.home)}
+                                  <span className="flex min-w-0 items-center justify-end gap-1.5">
+                                    <span className="truncate">
+                                      {name(m.home)}
+                                    </span>
+                                    <TeamLogo
+                                      path={data.logos.get(m.home)}
+                                      name={name(m.home)}
+                                      size="xs"
+                                    />
                                   </span>
                                   <span className="min-w-12 rounded-lg bg-slate-100 px-2 py-1 text-center font-bold tabular-nums dark:bg-slate-800">
                                     {score(m) ?? '-'}
                                   </span>
-                                  <span className="truncate">
-                                    {name(m.away)}
+                                  <span className="flex min-w-0 items-center gap-1.5">
+                                    <TeamLogo
+                                      path={data.logos.get(m.away)}
+                                      name={name(m.away)}
+                                      size="xs"
+                                    />
+                                    <span className="truncate">
+                                      {name(m.away)}
+                                    </span>
                                   </span>
                                 </MatchLink>
                               </li>

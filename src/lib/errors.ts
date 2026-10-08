@@ -25,6 +25,12 @@ const KNOWN_ERRORS: [RegExp, string][] = [
     'Server non raggiungibile: controlla la connessione e riprova',
   ],
   [/row-level security|permission denied/i, 'Operazione non consentita'],
+  [
+    /exceeded the maximum allowed size|payload too large/i,
+    'Immagine troppo grande',
+  ],
+  [/mime type .* is not supported/i, 'Formato immagine non supportato'],
+  [/bucket not found/i, 'Spazio per i loghi non configurato (migrazione 08)'],
   [/league_members_league_id_team_name_key/i, 'Nome squadra già usato'],
   [
     /players_league_id_name_real_team_key/i,

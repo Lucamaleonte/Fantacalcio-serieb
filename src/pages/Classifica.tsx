@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import PageTitle from '../components/PageTitle'
 import ScoreDetailsView from '../components/ScoreDetailsView'
 import StandingsTabs from '../components/StandingsTabs'
+import TeamLogo from '../components/TeamLogo'
 import { Alert, Button, Card, Select, Sheet } from '../components/ui'
 import { useCurrentLeague } from '../hooks/league'
 import { useAsyncData } from '../hooks/useAsyncData'
@@ -16,7 +17,7 @@ function formatPoints(value: number | string | null): string {
 }
 
 async function loadClassifica(leagueId: string) {
-  const [standings, matchdays] = await Promise.all([
+  const [standings, matchdays, members] = await Promise.all([
     supabase.from('standings').select('*').eq('league_id', leagueId),
     supabase
       .from('matchdays')
@@ -24,10 +25,18 @@ async function loadClassifica(leagueId: string) {
       .eq('league_id', leagueId)
       .eq('status', 'scored')
       .order('number', { ascending: false }),
+    supabase
+      .from('league_members')
+      .select('user_id, logo_path')
+      .eq('league_id', leagueId),
   ])
-  if (standings.error) throw standings.error
-  if (matchdays.error) throw matchdays.error
+  for (const r of [standings, matchdays, members]) if (r.error) throw r.error
   return {
+    logos: new Map(
+      (members.data as { user_id: string; logo_path: string | null }[]).map(
+        (m) => [m.user_id, m.logo_path],
+      ),
+    ),
     standings: sortStandings(standings.data as Standing[]),
     matchdays: matchdays.data as Matchday[],
   }
@@ -106,8 +115,15 @@ export default function Classifica() {
                     <td className="border-t border-slate-100 px-2 py-2.5 text-slate-500 dark:border-slate-800">
                       {i + 1}
                     </td>
-                    <td className="max-w-[9rem] truncate border-t border-slate-100 px-2 py-2.5 font-semibold dark:border-slate-800">
-                      {s.team_name}
+                    <td className="max-w-[9rem] border-t border-slate-100 px-2 py-2.5 font-semibold dark:border-slate-800">
+                      <span className="flex items-center gap-1.5">
+                        <TeamLogo
+                          path={data.logos.get(s.user_id)}
+                          name={s.team_name}
+                          size="xs"
+                        />
+                        <span className="truncate">{s.team_name}</span>
+                      </span>
                     </td>
                     <td className="border-t border-slate-100 px-2 py-2.5 text-center text-base font-bold dark:border-slate-800">
                       {s.points}

@@ -501,6 +501,67 @@ select pg_temp.check(
 select pg_temp.login('c');
 select pg_temp.check((select count(*) from public.standings) = 0, 'estraneo vede la classifica');
 
+-- Loghi: li cambia solo la squadra stessa, e solo nella propria cartella
+create function pg_temp.logo(p text) returns text language sql stable as $$
+  select pg_temp.lg()::text || '/' || pg_temp.uid(p)::text || '/1.webp'
+$$;
+
+select pg_temp.login('b');
+update public.league_members set logo_path = pg_temp.logo('b')
+where league_id = pg_temp.lg() and user_id = pg_temp.uid('b');
+select pg_temp.check(
+  (select logo_path from public.league_members where league_id = pg_temp.lg() and user_id = pg_temp.uid('b')) = pg_temp.logo('b'),
+  'squadra non salva il proprio logo'
+);
+select pg_temp.expect_error(
+  format('update public.league_members set logo_path = %L where league_id = %L and user_id = %L',
+    pg_temp.logo('d'), pg_temp.lg(), pg_temp.uid('b')),
+  'logo fuori dalla propria cartella'
+);
+update public.league_members set logo_path = pg_temp.logo('d')
+where league_id = pg_temp.lg() and user_id = pg_temp.uid('d');
+select pg_temp.check(
+  (select logo_path is null from public.league_members where league_id = pg_temp.lg() and user_id = pg_temp.uid('d')),
+  'membro cambia il logo di un altro'
+);
+
+select pg_temp.login('a');
+select pg_temp.expect_error(
+  format('update public.league_members set logo_path = null where league_id = %L and user_id = %L',
+    pg_temp.lg(), pg_temp.uid('b')),
+  'admin cambia il logo di un altro'
+);
+-- Il nome squadra l'admin lo cambia ancora
+update public.league_members set team_name = 'Squadra B'
+where league_id = pg_temp.lg() and user_id = pg_temp.uid('b');
+select pg_temp.check(
+  (select team_name from public.league_members where league_id = pg_temp.lg() and user_id = pg_temp.uid('b')) = 'Squadra B',
+  'admin non cambia più il nome squadra'
+);
+
+-- File dei loghi: solo nella cartella <lega>/<utente>/ di chi carica
+select pg_temp.login('b');
+select pg_temp.check(private.is_own_logo_folder(pg_temp.logo('b')), 'propria cartella dei loghi rifiutata');
+select pg_temp.check(not private.is_own_logo_folder(pg_temp.logo('d')), 'logo caricato nella cartella altrui');
+select pg_temp.check(
+  not private.is_own_logo_folder(pg_temp.uid('b')::text || '/1.webp'),
+  'logo caricato fuori dalla cartella della lega'
+);
+select pg_temp.login('c');
+select pg_temp.check(not private.is_own_logo_folder(pg_temp.logo('c')), 'estraneo carica un logo nella lega');
+
+reset role;
+select pg_temp.check(
+  (select public and file_size_limit = 524288 from storage.buckets where id = 'team-logos'),
+  'bucket dei loghi mancante o non configurato'
+);
+select pg_temp.check(
+  (select count(*) from pg_policies
+   where schemaname = 'storage' and tablename = 'objects' and policyname like 'loghi:%') = 3,
+  'policy dei loghi mancanti'
+);
+set local role authenticated;
+
 -- Membri: solo l'admin rimuove, e non se stesso
 select pg_temp.login('b');
 delete from public.league_members where user_id = pg_temp.uid('d');
