@@ -110,7 +110,7 @@ export default function Formazione() {
             open={open}
           />
 
-          {!open && <OtherLineups matchday={matchday} leagueId={league.id} />}
+          <OtherLineups matchday={matchday} leagueId={league.id} />
         </>
       )}
     </section>
@@ -735,7 +735,7 @@ async function loadOtherLineups(matchdayId: string, leagueId: string) {
     .map((m) => ({ ...m, lineup: byUser.get(m.user_id) ?? null }))
 }
 
-// Dopo la scadenza: formazioni di tutte le squadre
+// Formazioni di tutte le squadre (visibili a tutti i membri, anche prima della scadenza)
 function OtherLineups({
   matchday,
   leagueId,

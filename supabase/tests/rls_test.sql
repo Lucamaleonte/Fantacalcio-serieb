@@ -349,53 +349,54 @@ select pg_temp.expect_error(
   'formazione scritta senza save_lineup'
 );
 
--- Prima della scadenza: l'avversario (D) vede la formazione di B,
--- chi non gioca contro B (A riposa, C è estraneo) no
-select pg_temp.login('d');
-select pg_temp.check(
-  (select count(*) from public.lineups where matchday_id = pg_temp.md(1)) = 1,
-  'avversario non vede la formazione prima della scadenza'
-);
-select pg_temp.check(
-  (select count(*) from public.lineup_players) = 13,
-  'avversario non vede i giocatori della formazione prima della scadenza'
-);
--- ...ma solo per la giornata in cui si affrontano (giornata 2: B riposa)
+-- Prima della scadenza i membri vedono tutte le formazioni (anche chi non
+-- gioca contro B: in giornata 2 B riposa), l'estraneo C nessuna
 select pg_temp.login('b');
 select public.save_lineup(pg_temp.md(2), '4-4-2', pg_temp.starters_442());
+
 select pg_temp.login('d');
 select pg_temp.check(
-  (select count(*) from public.lineups where matchday_id = pg_temp.md(2)) = 0,
-  'formazione visibile in una giornata in cui non si affrontano'
+  (select count(*) from public.lineups where user_id = pg_temp.uid('b')) = 2,
+  'membro non vede le formazioni altrui prima della scadenza'
 );
+select pg_temp.check(
+  (select count(*) from public.lineup_players) = 24,
+  'membro non vede i giocatori delle formazioni altrui prima della scadenza'
+);
+select pg_temp.login('a');
+select pg_temp.check(
+  (select count(*) from public.lineups where user_id = pg_temp.uid('b')) = 2,
+  'admin non vede le formazioni altrui prima della scadenza'
+);
+
 -- Vederla non vuol dire poterla modificare
+select pg_temp.login('d');
 select pg_temp.expect_error(
   format('update public.lineups set formation = %L where matchday_id = %L', '3-4-3', pg_temp.md(1)),
-  'avversario modifica la formazione altrui'
+  'membro modifica la formazione altrui'
 );
 select pg_temp.expect_error(
   'delete from public.lineup_players',
-  'avversario cancella i giocatori della formazione altrui'
+  'membro cancella i giocatori della formazione altrui'
+);
+select pg_temp.expect_error(
+  format('delete from public.lineups where user_id = %L', pg_temp.uid('b')),
+  'membro cancella la formazione altrui'
 );
 select pg_temp.check(
   (select count(*) from public.lineup_players lp join public.lineups l on l.id = lp.lineup_id
    where l.matchday_id = pg_temp.md(1) and l.user_id = pg_temp.uid('b') and l.formation = '4-4-2') = 13,
-  'avversario modifica la formazione altrui'
+  'formazione altrui modificata'
 );
 
-select pg_temp.login('a');
-select pg_temp.check(
-  (select count(*) from public.lineups where matchday_id = pg_temp.md(1)) = 0,
-  'formazione altrui visibile prima della scadenza'
-);
-select pg_temp.check(
-  (select count(*) from public.lineup_players) = 0,
-  'giocatori della formazione altrui visibili prima della scadenza'
-);
 select pg_temp.login('c');
 select pg_temp.check(
   (select count(*) from public.lineups) = 0,
   'estraneo vede le formazioni'
+);
+select pg_temp.check(
+  (select count(*) from public.lineup_players) = 0,
+  'estraneo vede i giocatori delle formazioni'
 );
 
 -- Scadenza passata: niente salvataggi, formazioni visibili
