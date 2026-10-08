@@ -148,6 +148,14 @@ export default function Home() {
             </Link>
           </div>
         )}
+        {data && (
+          <Link
+            to="/calendario"
+            className="mt-3 inline-block text-sm font-semibold text-green-700 underline dark:text-green-400"
+          >
+            Calendario completo
+          </Link>
+        )}
       </Card>
 
       {data && data.standings.length > 0 && (

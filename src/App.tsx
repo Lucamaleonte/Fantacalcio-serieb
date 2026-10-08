@@ -7,6 +7,7 @@ import { Alert, Button, LoadingScreen } from './components/ui'
 import { useAuth } from './hooks/auth'
 import { useLeague } from './hooks/league'
 import { supabase } from './lib/supabase'
+import Calendario from './pages/Calendario'
 import Classifica from './pages/Classifica'
 import Formazione from './pages/Formazione'
 import Giocatori from './pages/Giocatori'
@@ -84,6 +85,7 @@ function LeagueRoutes() {
         <Route path="rosa" element={<Rosa />} />
         <Route path="formazione" element={<Formazione />} />
         <Route path="classifica" element={<Classifica />} />
+        <Route path="calendario" element={<Calendario />} />
         <Route path="profilo" element={<Profilo />} />
         <Route
           path="admin"
