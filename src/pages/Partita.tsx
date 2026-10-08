@@ -201,34 +201,31 @@ export default function Partita() {
         </p>
       </Card>
 
-      {open && involved && (
+      {open && (
         <Alert kind="info">
-          Prima della scadenza vedete solo voi due le vostre formazioni; si
-          possono ancora cambiare.{' '}
-          <Link to="/formazione" className="font-semibold underline">
-            Modifica la tua
-          </Link>
-        </Alert>
-      )}
-      {open && !involved && (
-        <Alert kind="info">
-          Le formazioni di questa partita saranno visibili dopo la scadenza.
+          Fino alla scadenza le formazioni si possono ancora cambiare.
+          {involved && (
+            <>
+              {' '}
+              <Link to="/formazione" className="font-semibold underline">
+                Modifica la tua
+              </Link>
+            </>
+          )}
         </Alert>
       )}
 
-      {(involved || !open) && (
-        <div className="grid grid-cols-2 gap-2">
-          {[f.home_user_id, f.away_user_id].map((userId) => (
-            <TeamColumn
-              key={userId}
-              lineup={data.lineups.get(userId) ?? null}
-              score={scored ? (data.scores.get(userId) ?? null) : null}
-            />
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-2 gap-2">
+        {[f.home_user_id, f.away_user_id].map((userId) => (
+          <TeamColumn
+            key={userId}
+            lineup={data.lineups.get(userId) ?? null}
+            score={scored ? (data.scores.get(userId) ?? null) : null}
+          />
+        ))}
+      </div>
 
-      {(involved || !open) && !scored && (
+      {!scored && (
         <Button variant="secondary" className="w-full" onClick={reload}>
           Aggiorna
         </Button>

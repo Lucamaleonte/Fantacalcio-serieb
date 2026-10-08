@@ -66,10 +66,10 @@ Solo se non è calcolata. Per una giornata già calcolata: Admin → toccala →
 - **Home:** prossima giornata, avversario, conto alla rovescia, stato della formazione (inserita / mancante), mini classifica.
 - **Giocatori:** ricerca e filtri (ruolo, squadra, svincolati / già presi).
 - **Rosa:** la propria e quelle degli altri, in sola lettura.
-- **Formazione:** scegli il modulo, tocca gli slot per scegliere i titolari, ordina la panchina (l'ordine decide le sostituzioni) e **Salva**. Il riquadro **Avversario** apre la sfida. Dopo la scadenza è in sola lettura e si vedono le formazioni di tutti.
+- **Formazione:** scegli il modulo, tocca gli slot per scegliere i titolari, ordina la panchina (l'ordine decide le sostituzioni) e **Salva**. Il riquadro **Avversario** apre la sfida; sotto ci sono le formazioni di tutte le squadre. Dopo la scadenza è in sola lettura.
 - **Classifica:** punti, partite, gol, fantapunti; risultati di ogni giornata con il dettaglio (titolari, voti, sostituzioni).
 - **Calendario** (scheda accanto a Classifica, o Home → Calendario completo): tutte le giornate con gli avversari, anche quelle non ancora create (33 in tutto, dalla 6ª alla 38ª di Serie B, calcolate dal sorteggio), e i risultati di quelle calcolate. Si può scegliere tra "Le mie partite" e "Tutte le partite".
-- **Sfida** (toccando una partita nel Calendario, il risultato in Classifica o "Vedi la sfida" in Home): le due formazioni affiancate, in sola lettura; dopo il calcolo con voti, sostituzioni e totale. Prima della scadenza ognuno vede la formazione del **proprio avversario** (che può ancora cambiarla); le formazioni delle altre partite si vedono dopo la scadenza.
+- **Sfida** (toccando una partita nel Calendario, il risultato in Classifica o "Vedi la sfida" in Home): le due formazioni affiancate, in sola lettura; dopo il calcolo con voti, sostituzioni e totale. Le formazioni sono visibili a tutti i membri anche prima della scadenza (finché è aperta si possono ancora cambiare); ognuno modifica solo la propria.
 - **Profilo:** nome squadra, nome utente, codice invito, versione dell'app, Esci.
 
 ## Installare l'app sul telefono
@@ -130,21 +130,21 @@ Servono solo per una nuova installazione (questa è già configurata).
 
 Le migrazioni sono in `supabase/migrations/`, in ordine di nome. Ogni modifica al database è una **nuova** migrazione: mai modificare quelle già eseguite.
 
-| File                                    | Contenuto                                                                          |
-| --------------------------------------- | ---------------------------------------------------------------------------------- |
-| `20261007120000_schema.sql`             | Tabelle e vincoli                                                                  |
-| `20261007120100_functions_triggers.sql` | Funzioni interne, trigger (budget, ruoli, giocatore unico, calendario)             |
-| `20261007120200_rpc.sql`                | Funzioni chiamate dall'app (lega, invito, calendario, formazione, voti, risultati) |
-| `20261007120300_rls_grants.sql`         | Row Level Security, vista `standings`, GRANT                                       |
-| `20261007120400_fix_grants.sql`         | Toglie i permessi automatici sulle tabelle e lascia solo quelli previsti           |
-| `20261007120500_rosters_admin_only.sql` | Rose modificabili solo dall'admin                                                  |
-| `20261008120000_opponent_lineups.sql`   | Formazione dell'avversario visibile prima della scadenza                           |
+| File                                        | Contenuto                                                                          |
+| ------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `20261007120000_schema.sql`                 | Tabelle e vincoli                                                                  |
+| `20261007120100_functions_triggers.sql`     | Funzioni interne, trigger (budget, ruoli, giocatore unico, calendario)             |
+| `20261007120200_rpc.sql`                    | Funzioni chiamate dall'app (lega, invito, calendario, formazione, voti, risultati) |
+| `20261007120300_rls_grants.sql`             | Row Level Security, vista `standings`, GRANT                                       |
+| `20261007120400_fix_grants.sql`             | Toglie i permessi automatici sulle tabelle e lascia solo quelli previsti           |
+| `20261007120500_rosters_admin_only.sql`     | Rose modificabili solo dall'admin                                                  |
+| `20261008120000_lineups_visible_to_all.sql` | Formazioni di tutti visibili anche prima della scadenza                            |
 
 **Eseguirle:** Supabase → **SQL Editor** → **New query** → incolla il contenuto del file → **Run**, un file alla volta e in ordine. In alternativa, con la [Supabase CLI](https://supabase.com/docs/guides/cli): `supabase link` e `supabase db push`.
 
 > Se l'integrazione GitHub di Supabase ha il deploy automatico attivo, le migrazioni vengono applicate al push su `main`: in quel caso non eseguirle anche a mano.
 
-**Verificare la sicurezza:** esegui `supabase/tests/rls_test.sql` nel SQL Editor. Crea utenti e dati di prova in una transazione e alla fine la annulla (non lascia nulla, non tocca la lega vera). Nessun errore = test superati; altrimenti compare `TEST FALLITO: <descrizione>`. Verifica, tra l'altro: un estraneo non vede nulla, codice invito errato rifiutato, un membro non modifica nessuna rosa né le impostazioni né il proprio ruolo, budget / limiti per ruolo / giocatore unico, formazioni valide e chiuse dopo la scadenza (anche chiamando l'API direttamente), formazioni altrui visibili solo dopo la scadenza (tranne quella dell'avversario della giornata, visibile ma non modificabile), voti e punteggi scrivibili solo dall'admin, ricalcolo senza duplicati, utente non loggato senza accesso.
+**Verificare la sicurezza:** esegui `supabase/tests/rls_test.sql` nel SQL Editor. Crea utenti e dati di prova in una transazione e alla fine la annulla (non lascia nulla, non tocca la lega vera). Nessun errore = test superati; altrimenti compare `TEST FALLITO: <descrizione>`. Verifica, tra l'altro: un estraneo non vede nulla, codice invito errato rifiutato, un membro non modifica nessuna rosa né le impostazioni né il proprio ruolo, budget / limiti per ruolo / giocatore unico, formazioni valide e chiuse dopo la scadenza (anche chiamando l'API direttamente), formazioni altrui visibili ai membri ma non modificabili, voti e punteggi scrivibili solo dall'admin, ricalcolo senza duplicati, utente non loggato senza accesso.
 
 ## Sviluppo
 
