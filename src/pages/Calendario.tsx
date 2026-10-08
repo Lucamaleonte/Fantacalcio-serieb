@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import PageTitle from '../components/PageTitle'
 import StandingsTabs from '../components/StandingsTabs'
 import { Alert, Button, Card } from '../components/ui'
@@ -19,6 +20,8 @@ import type { Fixture, Matchday } from '../lib/types'
 const SEASON_ROUNDS = 33
 
 interface Match {
+  // Solo per le giornate già create
+  fixtureId: string | null
   home: string
   away: string
   homeGoals: number | null
@@ -77,12 +80,14 @@ function buildRounds(data: Awaited<ReturnType<typeof loadCalendario>>) {
       ? data.fixtures
           .filter((f) => f.matchday_id === matchday.id)
           .map((f) => ({
+            fixtureId: f.id,
             home: f.home_user_id,
             away: f.away_user_id,
             homeGoals: f.home_goals,
             awayGoals: f.away_goals,
           }))
       : pairingsForRound(data.teamOrder, n).map((p) => ({
+          fixtureId: null,
           ...p,
           homeGoals: null,
           awayGoals: null,
@@ -102,6 +107,25 @@ function score(m: Match): string | null {
   return m.homeGoals === null || m.awayGoals === null
     ? null
     : `${m.homeGoals} - ${m.awayGoals}`
+}
+
+// Partita di una giornata già creata: apre la sfida con le formazioni
+function MatchLink({
+  fixtureId,
+  className,
+  children,
+}: {
+  fixtureId: string | null
+  className: string
+  children: ReactNode
+}) {
+  return fixtureId ? (
+    <Link to={`/partita/${fixtureId}`} className={className}>
+      {children}
+    </Link>
+  ) : (
+    <div className={className}>{children}</div>
+  )
 }
 
 type View = 'mine' | 'all'
@@ -205,40 +229,50 @@ export default function Calendario() {
                     <li
                       key={r.number}
                       id={`giornata-${r.number}`}
-                      className={`flex min-h-14 items-center gap-3 px-3 py-2 text-sm ${
+                      className={
                         isCurrent ? 'bg-green-50 dark:bg-green-950/50' : ''
-                      }`}
+                      }
                     >
-                      <span className="w-8 shrink-0 font-bold text-slate-500">
-                        G{r.number}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        {m ? (
-                          <>
-                            <span className="block truncate font-semibold">
-                              {m.home === me ? 'vs ' : '@ '}
-                              {name(m.home === me ? m.away : m.home)}
+                      <MatchLink
+                        fixtureId={m?.fixtureId ?? null}
+                        className="flex min-h-14 items-center gap-3 px-3 py-2 text-sm"
+                      >
+                        <span className="w-8 shrink-0 font-bold text-slate-500">
+                          G{r.number}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          {m ? (
+                            <>
+                              <span className="block truncate font-semibold">
+                                {m.home === me ? 'vs ' : '@ '}
+                                {name(m.home === me ? m.away : m.home)}
+                              </span>
+                              <span className="block text-xs text-slate-500 dark:text-slate-400">
+                                {m.home === me ? 'In casa' : 'In trasferta'} ·{' '}
+                                {roundStatus(r.matchday)}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-slate-500 dark:text-slate-400">
+                              {inCalendar && r.matches.length > 0
+                                ? 'Riposo'
+                                : 'Nessuna partita'}
                             </span>
-                            <span className="block text-xs text-slate-500 dark:text-slate-400">
-                              {m.home === me ? 'In casa' : 'In trasferta'} ·{' '}
-                              {roundStatus(r.matchday)}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-slate-500 dark:text-slate-400">
-                            {inCalendar && r.matches.length > 0
-                              ? 'Riposo'
-                              : 'Nessuna partita'}
+                          )}
+                        </span>
+                        {m && score(m) && (
+                          <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 font-bold tabular-nums dark:bg-slate-800">
+                            {m.home === me
+                              ? score(m)
+                              : `${m.awayGoals} - ${m.homeGoals}`}
                           </span>
                         )}
-                      </span>
-                      {m && score(m) && (
-                        <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 font-bold tabular-nums dark:bg-slate-800">
-                          {m.home === me
-                            ? score(m)
-                            : `${m.awayGoals} - ${m.homeGoals}`}
-                        </span>
-                      )}
+                        {m?.fixtureId && (
+                          <span className="shrink-0 text-lg text-slate-400">
+                            ›
+                          </span>
+                        )}
+                      </MatchLink>
                     </li>
                   )
                 })}
@@ -268,21 +302,25 @@ export default function Calendario() {
                           {r.matches.map((m) => {
                             const mine = m.home === me || m.away === me
                             return (
-                              <li
-                                key={m.home}
-                                className={`grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-lg px-1 py-1 text-sm ${
-                                  mine
-                                    ? 'bg-green-50 font-semibold dark:bg-green-950/50'
-                                    : ''
-                                }`}
-                              >
-                                <span className="truncate text-right">
-                                  {name(m.home)}
-                                </span>
-                                <span className="min-w-12 rounded-lg bg-slate-100 px-2 py-1 text-center font-bold tabular-nums dark:bg-slate-800">
-                                  {score(m) ?? '-'}
-                                </span>
-                                <span className="truncate">{name(m.away)}</span>
+                              <li key={m.home}>
+                                <MatchLink
+                                  fixtureId={m.fixtureId}
+                                  className={`grid min-h-11 grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-lg px-1 py-1 text-sm ${
+                                    mine
+                                      ? 'bg-green-50 font-semibold dark:bg-green-950/50'
+                                      : ''
+                                  }`}
+                                >
+                                  <span className="truncate text-right">
+                                    {name(m.home)}
+                                  </span>
+                                  <span className="min-w-12 rounded-lg bg-slate-100 px-2 py-1 text-center font-bold tabular-nums dark:bg-slate-800">
+                                    {score(m) ?? '-'}
+                                  </span>
+                                  <span className="truncate">
+                                    {name(m.away)}
+                                  </span>
+                                </MatchLink>
                               </li>
                             )
                           })}

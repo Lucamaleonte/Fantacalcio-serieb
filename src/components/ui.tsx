@@ -74,10 +74,18 @@ const roleStyles: Record<PlayerRole, string> = {
   A: 'bg-red-600 text-white',
 }
 
-export function RoleBadge({ role }: { role: PlayerRole }) {
+export function RoleBadge({
+  role,
+  small = false,
+}: {
+  role: PlayerRole
+  small?: boolean
+}) {
   return (
     <span
-      className={`inline-flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-bold ${roleStyles[role]}`}
+      className={`inline-flex shrink-0 items-center justify-center rounded-full font-bold ${
+        small ? 'size-5 text-xs' : 'size-7 text-sm'
+      } ${roleStyles[role]}`}
       aria-label={`Ruolo ${role}`}
     >
       {role}
