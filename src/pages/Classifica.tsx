@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import PageTitle from '../components/PageTitle'
 import ScoreDetailsView from '../components/ScoreDetailsView'
+import StandingsTabs from '../components/StandingsTabs'
 import { Alert, Button, Card, Select, Sheet } from '../components/ui'
 import { useCurrentLeague } from '../hooks/league'
 import { useAsyncData } from '../hooks/useAsyncData'
@@ -43,6 +44,7 @@ export default function Classifica() {
   return (
     <section className="space-y-4">
       <PageTitle>Classifica</PageTitle>
+      <StandingsTabs />
 
       {error && (
         <div className="space-y-2">
