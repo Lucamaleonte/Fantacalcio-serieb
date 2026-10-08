@@ -68,7 +68,7 @@ Solo se non è calcolata. Per una giornata già calcolata: Admin → toccala →
 - **Rosa:** la propria e quelle degli altri, in sola lettura.
 - **Formazione:** scegli il modulo, tocca gli slot per scegliere i titolari, ordina la panchina (l'ordine decide le sostituzioni) e **Salva**. Dopo la scadenza è in sola lettura e si vedono le formazioni di tutti.
 - **Classifica:** punti, partite, gol, fantapunti; risultati di ogni giornata con il dettaglio (titolari, voti, sostituzioni).
-- **Calendario** (scheda accanto a Classifica, o Home → Calendario completo): tutte le giornate con gli avversari, anche quelle non ancora create (fino alla 38ª, calcolate dal sorteggio), e i risultati di quelle calcolate. Si può scegliere tra "Le mie partite" e "Tutte le partite".
+- **Calendario** (scheda accanto a Classifica, o Home → Calendario completo): tutte le giornate con gli avversari, anche quelle non ancora create (33 in tutto, dalla 6ª alla 38ª di Serie B, calcolate dal sorteggio), e i risultati di quelle calcolate. Si può scegliere tra "Le mie partite" e "Tutte le partite".
 - **Profilo:** nome squadra, nome utente, codice invito, versione dell'app, Esci.
 
 ## Installare l'app sul telefono

@@ -14,8 +14,9 @@ import {
 import { supabase } from '../lib/supabase'
 import type { Fixture, Matchday } from '../lib/types'
 
-// Giornate mostrate anche se non ancora create (come la Serie B)
-const SEASON_ROUNDS = 38
+// Giornate mostrate anche se non ancora create: la lega parte dalla 6ª
+// giornata di Serie B e finisce con la 38ª, quindi 33 giornate
+const SEASON_ROUNDS = 33
 
 interface Match {
   home: string
