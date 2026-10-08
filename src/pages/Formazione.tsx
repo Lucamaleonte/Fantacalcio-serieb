@@ -95,6 +95,13 @@ export default function Formazione() {
 
           <DeadlineBanner matchday={matchday} now={now} open={open} />
 
+          <OpponentLink
+            key={`opp-${matchday.id}`}
+            matchdayId={matchday.id}
+            leagueId={league.id}
+            userId={membership.user_id}
+          />
+
           <LineupLoader
             key={matchday.id}
             league={league}
@@ -139,6 +146,62 @@ function DeadlineBanner({
       Scadenza <strong>{formatDeadline(matchday.deadline)}</strong> · mancano{' '}
       <strong>{formatCountdown(remaining)}</strong>
     </p>
+  )
+}
+
+async function loadOpponent(
+  matchdayId: string,
+  leagueId: string,
+  userId: string,
+) {
+  const { data, error } = await supabase
+    .from('fixtures')
+    .select('id, home_user_id, away_user_id')
+    .eq('matchday_id', matchdayId)
+    .or(`home_user_id.eq.${userId},away_user_id.eq.${userId}`)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return null
+  const opponentId =
+    data.home_user_id === userId ? data.away_user_id : data.home_user_id
+  const member = await supabase
+    .from('league_members')
+    .select('team_name')
+    .eq('league_id', leagueId)
+    .eq('user_id', opponentId)
+    .maybeSingle()
+  if (member.error) throw member.error
+  return { fixtureId: data.id as string, team: member.data?.team_name ?? '?' }
+}
+
+// Collegamento alla sfida della giornata (formazione dell'avversario)
+function OpponentLink({
+  matchdayId,
+  leagueId,
+  userId,
+}: {
+  matchdayId: string
+  leagueId: string
+  userId: string
+}) {
+  const loader = useCallback(
+    () => loadOpponent(matchdayId, leagueId, userId),
+    [matchdayId, leagueId, userId],
+  )
+  const { data } = useAsyncData(loader)
+  if (!data) return null
+  return (
+    <Link
+      to={`/partita/${data.fixtureId}`}
+      className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm dark:border-slate-800 dark:bg-slate-900"
+    >
+      <span className="min-w-0 truncate">
+        Avversario: <strong>{data.team}</strong>
+      </span>
+      <span className="shrink-0 font-semibold text-green-700 dark:text-green-400">
+        Vedi la sua formazione ›
+      </span>
+    </Link>
   )
 }
 

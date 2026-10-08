@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { Link } from 'react-router-dom'
 import PageTitle from '../components/PageTitle'
 import ScoreDetailsView from '../components/ScoreDetailsView'
 import StandingsTabs from '../components/StandingsTabs'
@@ -254,9 +255,13 @@ function MatchdayResults({
               className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-sm"
             >
               <TeamButton userId={f.home_user_id} align="right" />
-              <span className="rounded-lg bg-slate-100 px-2 py-1 text-center text-base font-bold tabular-nums dark:bg-slate-800">
-                {f.home_goals ?? '–'} - {f.away_goals ?? '–'}
-              </span>
+              <Link
+                to={`/partita/${f.id}`}
+                aria-label="Apri la sfida"
+                className="flex min-h-11 items-center rounded-lg bg-slate-100 px-2 text-center text-base font-bold tabular-nums dark:bg-slate-800"
+              >
+                {f.home_goals ?? '–'} - {f.away_goals ?? '–'} ›
+              </Link>
               <TeamButton userId={f.away_user_id} align="left" />
               <span className="text-right text-xs text-slate-500">
                 {formatPoints(f.home_points)}
@@ -270,7 +275,8 @@ function MatchdayResults({
         </ul>
       )}
       <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-        Tocca una squadra per vedere titolari, voti e sostituzioni.
+        Tocca una squadra per vedere titolari, voti e sostituzioni, o il
+        risultato per vedere la sfida con le due formazioni.
       </p>
 
       {open && (

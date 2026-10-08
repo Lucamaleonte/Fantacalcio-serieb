@@ -108,7 +108,13 @@ export default function Home() {
                 {fixture!.home_user_id === membership.user_id
                   ? 'In casa contro '
                   : 'In trasferta contro '}
-                <strong>{data.teams.get(opponentId)}</strong>
+                <strong>{data.teams.get(opponentId)}</strong> ·{' '}
+                <Link
+                  to={`/partita/${fixture!.id}`}
+                  className="font-semibold text-green-700 underline dark:text-green-400"
+                >
+                  Vedi la sfida
+                </Link>
               </p>
             )}
             {open ? (

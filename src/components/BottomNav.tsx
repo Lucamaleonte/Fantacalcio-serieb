@@ -6,7 +6,7 @@ const links: { to: string; label: string; also?: string[] }[] = [
   { to: '/giocatori', label: 'Giocatori' },
   { to: '/rosa', label: 'Rosa' },
   { to: '/formazione', label: 'Formazione' },
-  { to: '/classifica', label: 'Classifica', also: ['/calendario'] },
+  { to: '/classifica', label: 'Classifica', also: ['/calendario', '/partita'] },
 ]
 
 export default function BottomNav() {

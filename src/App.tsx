@@ -15,6 +15,7 @@ import Home from './pages/Home'
 import ImportaGiocatori from './pages/ImportaGiocatori'
 import Login from './pages/Login'
 import Onboarding from './pages/Onboarding'
+import Partita from './pages/Partita'
 import Profilo from './pages/Profilo'
 import Rosa from './pages/Rosa'
 
@@ -86,6 +87,7 @@ function LeagueRoutes() {
         <Route path="formazione" element={<Formazione />} />
         <Route path="classifica" element={<Classifica />} />
         <Route path="calendario" element={<Calendario />} />
+        <Route path="partita/:id" element={<Partita />} />
         <Route path="profilo" element={<Profilo />} />
         <Route
           path="admin"
