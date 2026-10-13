@@ -49,8 +49,8 @@ Stack: Vite + React + TypeScript, Tailwind CSS, Supabase (Auth + Postgres + Row 
 
 1. **Crea la giornata:** Admin → Giornate → numero (già proposto) e **scadenza** formazioni (di solito l'orario della prima partita di Serie B del turno). Le partite degli scontri diretti si creano da sole. La scadenza si può modificare finché la giornata non è calcolata.
 2. Dopo le partite, **inserisci i voti:** Admin → Giornate → **Voti ›**
-   - **Importa:** incolla il testo dei voti (colonne `Nome;Squadra;Voto;Fantavoto`, anche con tab o virgola; vanno bene intestazioni, righe vuote, virgola decimale e `SV`/`s.v.`/`-`) oppure carica un CSV. L'app abbina i nomi ai giocatori (nome + squadra, poi cognome + squadra, poi cognome se unico) e mostra tre gruppi: abbinati, da controllare (scegli il giocatore dal menu o "Ignora") ed errori. Reimportare la stessa giornata sovrascrive i voti.
-   - **A mano** (ripiego o correzioni): elenco dei giocatori schierati, squadra per squadra; scrivi il fantavoto, campo vuoto = SV.
+   - **Importa:** incolla il testo dei voti (colonne `Nome;Squadra;Voto;Fantavoto`, anche con tab o virgola; vanno bene intestazioni, righe vuote, virgola decimale e `SV`/`s.v.`/`-`) oppure carica un CSV. Con l'intestazione si possono aggiungere le colonne dei bonus e malus `Gol;Assist;Amm;Esp;GS;PI` (numeri interi, vuoto = 0; facoltative anche `RP`, `RS`, `Au`): servono a mostrare le emoji nella Sfida, il punteggio usa sempre il fantavoto. Un file senza queste colonne lascia i bonus già salvati. L'app abbina i nomi ai giocatori (nome + squadra, poi cognome + squadra, poi cognome se unico) e mostra tre gruppi: abbinati, da controllare (scegli il giocatore dal menu o "Ignora") ed errori. Reimportare la stessa giornata sovrascrive i voti.
+   - **A mano** (ripiego o correzioni): elenco dei giocatori schierati, squadra per squadra; scrivi il fantavoto, campo vuoto = SV. I bonus e malus importati restano.
 3. **Calcola:** scheda **Calcolo** (disponibile dopo la scadenza). Controlla l'anteprima di risultati e punteggi, poi **Salva risultati**. Se correggi un voto, premi **Ricalcola e salva**: la classifica si aggiorna senza duplicati.
 
 ### Impostazioni e membri
@@ -63,13 +63,13 @@ Solo se non è calcolata. Per una giornata già calcolata: Admin → toccala →
 
 ## Uso per i membri
 
-- **Home:** prossima giornata, avversario, conto alla rovescia, stato della formazione (inserita / mancante), mini classifica.
+- **Home:** la giornata dopo l'ultima calcolata (con l'avversario dal sorteggio anche se l'admin non l'ha ancora creata), conto alla rovescia, stato della formazione (inserita / mancante), mini classifica.
 - **Giocatori:** ricerca e filtri (ruolo, squadra, svincolati / già presi).
 - **Rosa:** la propria e quelle degli altri, in sola lettura.
-- **Formazione:** scegli il modulo, tocca gli slot per scegliere i titolari, ordina la panchina (l'ordine decide le sostituzioni) e **Salva**. Il riquadro **Avversario** apre la sfida; sotto ci sono le formazioni di tutte le squadre. Dopo la scadenza è in sola lettura.
-- **Classifica:** punti, partite, gol, fantapunti; risultati di ogni giornata con il dettaglio (titolari, voti, sostituzioni).
-- **Calendario** (scheda accanto a Classifica, o Home → Calendario completo): tutte le giornate con gli avversari, anche quelle non ancora create (33 in tutto, dalla 6ª alla 38ª di Serie B, calcolate dal sorteggio), e i risultati di quelle calcolate. Si può scegliere tra "Le mie partite" e "Tutte le partite".
-- **Sfida** (toccando una partita nel Calendario, il risultato in Classifica o "Vedi la sfida" in Home): le due formazioni affiancate, in sola lettura; dopo il calcolo con voti, sostituzioni e totale. Le formazioni sono visibili a tutti i membri anche prima della scadenza (finché è aperta si possono ancora cambiare); ognuno modifica solo la propria.
+- **Formazione:** scegli il modulo, tocca gli slot per scegliere i titolari, ordina la panchina (l'ordine decide le sostituzioni) e **Salva**. **Copia la formazione della giornata N** ricarica l'ultima formazione salvata (chi non è più in rosa viene tolto); poi va salvata. Il riquadro **Avversario** apre la sfida; sotto ci sono le formazioni di tutte le squadre. Dopo la scadenza è in sola lettura.
+- **Classifica:** punti, partite, gol, fantapunti; risultati di ogni giornata con il dettaglio (titolari, voto base, fantavoto, bonus/malus, sostituzioni).
+- **Calendario** (scheda accanto a Classifica, o Home → Calendario completo): tutte le giornate con gli avversari, anche quelle non ancora create (33 in tutto, dalla 6ª alla 38ª di Serie B, calcolate dal sorteggio), e i risultati di quelle calcolate. Si può scegliere tra "Le mie partite" e "Tutte le partite"; è evidenziata la giornata dopo l'ultima calcolata.
+- **Sfida** (toccando una partita nel Calendario, il risultato in Classifica o "Vedi la sfida" in Home): le due formazioni affiancate a specchio (casa a sinistra, trasferta a destra), in sola lettura. Dopo il calcolo, per titolari e panchine: voto base (sopra) e fantavoto (sotto) al centro, emoji dei bonus/malus sotto il nome (⚽ gol, 👟 assist, 🧤 porta inviolata, 🟨 giallo, 🟥 rosso, ❌ gol subito, ✋ rigore parato, 🚫 rigore sbagliato, 🔙 autogol), chi non conta sbiadito, sostituzioni e totale. Le formazioni sono visibili a tutti i membri anche prima della scadenza (finché è aperta si possono ancora cambiare); ognuno modifica solo la propria.
 - **Profilo:** logo della squadra (**Carica logo** / **Cambia logo** / **Rimuovi**), nome squadra, nome utente, codice invito, versione dell'app, Esci. Il logo si vede in alto accanto al nome, in Home, Classifica, Calendario e nella Sfida; senza logo compare un cerchio con le iniziali. Ognuno cambia solo il proprio (nemmeno l'admin cambia quello degli altri).
 
 ## Installare l'app sul telefono
@@ -106,7 +106,7 @@ Valori iniziali (modificabili da Admin → Impostazioni lega, salvo dove indicat
 | Sostituzioni massime                  | 5 (stesso ruolo, primo panchinaro con voto, mai lo stesso due volte) |
 | Titolare senza voto e senza sostituto | 0                                                                    |
 | Squadra senza formazione              | 0 fantapunti                                                         |
-| Voti                                  | Si usa il fantavoto (bonus/malus già inclusi); nessun bonus nell'app |
+| Voti                                  | Si usa il fantavoto importato (bonus/malus già inclusi)              |
 | Giocatore in più squadre              | No (fisso)                                                           |
 | Rose                                  | Le inserisce e modifica solo l'admin (fisso)                         |
 | Classifica                            | Scontri diretti: vittoria 3, pareggio 1, sconfitta 0 (fisso)         |
@@ -142,6 +142,7 @@ Le migrazioni sono in `supabase/migrations/`, in ordine di nome. Ogni modifica a
 | `20261007120500_rosters_admin_only.sql`     | Rose modificabili solo dall'admin                                                  |
 | `20261008120000_lineups_visible_to_all.sql` | Formazioni di tutti visibili anche prima della scadenza                            |
 | `20261008130000_team_logos.sql`             | Loghi: colonna `logo_path`, bucket Storage `team-logos` e regole di caricamento    |
+| `20261013120000_vote_events.sql`            | Bonus e malus dei voti: colonna `player_votes.events` e `import_votes` aggiornata  |
 
 **Eseguirle:** Supabase → **SQL Editor** → **New query** → incolla il contenuto del file → **Run**, un file alla volta e in ordine. In alternativa, con la [Supabase CLI](https://supabase.com/docs/guides/cli): `supabase link` e `supabase db push`.
 
