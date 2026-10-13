@@ -439,6 +439,23 @@ select pg_temp.check(
   (select fantavote from public.player_votes where matchday_id = pg_temp.md(1) and player_id = pg_temp.pl('Test P1')) = 5,
   'reimport voti sovrascrive'
 );
+-- Bonus e malus: solo chiavi note con interi da 1 a 20
+select public.import_votes(pg_temp.md(1), jsonb_build_array(
+  jsonb_build_object('player_id', pg_temp.pl('Test P1'), 'vote', 6, 'fantavote', 5,
+    'events', jsonb_build_object('gs', 1, 'pi', 0, 'boh', 3, 'amm', 1.5, 'gol', '2'))
+));
+select pg_temp.check(
+  (select events from public.player_votes where matchday_id = pg_temp.md(1) and player_id = pg_temp.pl('Test P1')) = '{"gs": 1}'::jsonb,
+  'eventi del voto non ripuliti'
+);
+-- Correzione senza eventi (inserimento a mano): gli eventi restano
+select public.import_votes(pg_temp.md(1), jsonb_build_array(
+  jsonb_build_object('player_id', pg_temp.pl('Test P1'), 'vote', 6, 'fantavote', 5)
+));
+select pg_temp.check(
+  (select events from public.player_votes where matchday_id = pg_temp.md(1) and player_id = pg_temp.pl('Test P1')) = '{"gs": 1}'::jsonb,
+  'correzione a mano cancella gli eventi'
+);
 
 select pg_temp.login('d');
 select pg_temp.check((select count(*) from public.player_votes) = 2, 'membro non vede i voti');

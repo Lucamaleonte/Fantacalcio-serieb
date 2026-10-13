@@ -3,6 +3,9 @@
 // cerchio): serve a mostrare anche le giornate non ancora create. Se cambia
 // uno dei due, va cambiato anche l'altro.
 
+// La lega parte dalla 6ª giornata di Serie B e finisce con la 38ª: 33 giornate
+export const SEASON_ROUNDS = 33
+
 export interface Pairing {
   home: string
   away: string

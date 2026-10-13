@@ -5,6 +5,7 @@ import {
   isLineupOpen,
   nextMatchdayNumber,
   pickCurrentMatchday,
+  roundAfterLastScored,
   toDateTimeLocal,
 } from './matchdays'
 import type { Matchday, MatchdayStatus } from './types'
@@ -49,6 +50,27 @@ describe('pickCurrentMatchday', () => {
 
   it('nessuna giornata', () => {
     expect(pickCurrentMatchday([], now)).toBeNull()
+  })
+})
+
+describe('roundAfterLastScored', () => {
+  it("la giornata dopo l'ultima calcolata", () => {
+    const list = [
+      md(1, '2026-10-03T18:00:00Z', 'scored'),
+      md(2, '2026-10-09T18:00:00Z', 'locked'),
+      md(3, '2026-10-17T18:00:00Z'),
+    ]
+    expect(roundAfterLastScored(list)).toBe(2)
+    expect(
+      roundAfterLastScored([...list, md(2, '2026-10-09T18:00:00Z', 'scored')]),
+    ).toBe(3)
+  })
+
+  it('nessuna calcolata: la prima', () => {
+    expect(roundAfterLastScored([])).toBe(1)
+    expect(
+      roundAfterLastScored([md(1, '2026-10-03T18:00:00Z', 'locked')]),
+    ).toBe(1)
   })
 })
 

@@ -1,4 +1,5 @@
 import { useMemo, useState, type ChangeEvent, type ReactNode } from 'react'
+import EventIcons from '../../components/EventIcons'
 import { Alert, Button, Card, RoleBadge } from '../../components/ui'
 import { readTextFile } from '../../lib/csv'
 import { errorMessage } from '../../lib/errors'
@@ -52,6 +53,8 @@ export default function VotesImport({
         player_id: playerId,
         vote: row.vote,
         fantavote: row.fantavote,
+        // Senza colonne dei bonus restano quelli già salvati
+        ...(parsed.hasEvents ? { events: row.events } : {}),
       })
     for (const m of match.matched) add(m.row, m.player.id)
     for (const { row } of [
@@ -62,7 +65,7 @@ export default function VotesImport({
       if (choice) add(row, choice)
     }
     return [...rows.values()]
-  }, [match, choices])
+  }, [match, choices, parsed.hasEvents])
 
   function reset(nextText: string, name: string | null) {
     setText(nextText)
@@ -116,7 +119,8 @@ export default function VotesImport({
         <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
           Colonne <code>Nome;Squadra;Voto;Fantavoto</code> (anche separate da
           tab o virgola). Vanno bene intestazioni, righe vuote, virgola decimale
-          e SV.
+          e SV. Facoltative, con l&apos;intestazione, le colonne dei bonus e
+          malus mostrati nella sfida: <code>Gol;Assist;Amm;Esp;GS;PI</code>.
         </p>
         <textarea
           className="block h-40 w-full rounded-xl border border-slate-300 bg-white p-3 font-mono text-sm dark:border-slate-700 dark:bg-slate-950"
@@ -238,6 +242,7 @@ export default function VotesImport({
                         <span className="text-slate-500"> ← {row.name}</span>
                       )}
                     </span>
+                    <EventIcons events={row.events} />
                     <span className="shrink-0 tabular-nums">
                       {formatVote(row.vote)} /{' '}
                       <strong>{formatVote(row.fantavote)}</strong>
@@ -321,7 +326,8 @@ function ReviewRow({ row, children }: { row: VoteRow; children: ReactNode }) {
     <li className="rounded-xl border border-amber-200 p-2 text-sm dark:border-amber-900">
       <p className="mb-1">
         <span className="font-semibold">{row.name}</span>
-        {row.team && <span className="text-slate-500"> · {row.team}</span>}
+        {row.team && <span className="text-slate-500"> · {row.team}</span>}{' '}
+        <EventIcons events={row.events} />
         <span className="float-right tabular-nums">
           {formatVote(row.vote)} / <strong>{formatVote(row.fantavote)}</strong>
         </span>

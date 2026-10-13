@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { Link } from 'react-router-dom'
 import PageTitle from '../components/PageTitle'
-import ScoreDetailsView from '../components/ScoreDetailsView'
+import ScoreDetailsView, { type VoteInfo } from '../components/ScoreDetailsView'
 import StandingsTabs from '../components/StandingsTabs'
 import TeamLogo from '../components/TeamLogo'
 import { Alert, Button, Card, Select, Sheet } from '../components/ui'
@@ -11,6 +11,7 @@ import type { ScoreDetails } from '../lib/scoring'
 import { sortStandings, type Standing } from '../lib/standings'
 import { supabase } from '../lib/supabase'
 import type { Fixture, Matchday } from '../lib/types'
+import type { VoteEvents } from '../lib/voteEvents'
 
 function formatPoints(value: number | string | null): string {
   return value === null ? '–' : String(Number(value)).replace('.', ',')
@@ -181,7 +182,7 @@ export default function Classifica() {
 }
 
 async function loadResults(matchdayId: string, leagueId: string) {
-  const [fixtures, scores, members] = await Promise.all([
+  const [fixtures, scores, members, votes] = await Promise.all([
     supabase
       .from('fixtures')
       .select(
@@ -196,9 +197,23 @@ async function loadResults(matchdayId: string, leagueId: string) {
       .from('league_members')
       .select('user_id, team_name')
       .eq('league_id', leagueId),
+    supabase
+      .from('player_votes')
+      .select('player_id, vote, events')
+      .eq('matchday_id', matchdayId)
+      .range(0, 4999),
   ])
-  for (const r of [fixtures, scores, members]) if (r.error) throw r.error
+  for (const r of [fixtures, scores, members, votes]) if (r.error) throw r.error
   return {
+    votes: new Map(
+      (
+        votes.data as {
+          player_id: string
+          vote: number | null
+          events: VoteEvents
+        }[]
+      ).map((v) => [v.player_id, { vote: v.vote, events: v.events }]),
+    ) as VoteInfo,
     fixtures: fixtures.data as Fixture[],
     scores: new Map(
       (
@@ -301,6 +316,7 @@ function MatchdayResults({
             <ScoreDetailsView
               details={opened.details}
               points={Number(opened.points)}
+              votes={data.votes}
             />
           ) : (
             <p className="text-sm text-slate-500">

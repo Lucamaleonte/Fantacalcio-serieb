@@ -6,11 +6,12 @@ import { Alert, Card } from '../components/ui'
 import { useCurrentLeague } from '../hooks/league'
 import { useAsyncData } from '../hooks/useAsyncData'
 import { useNow } from '../hooks/useNow'
+import { calendarTeams, pairingsForRound, SEASON_ROUNDS } from '../lib/calendar'
 import {
   formatCountdown,
   formatDeadline,
   isLineupOpen,
-  pickCurrentMatchday,
+  roundAfterLastScored,
 } from '../lib/matchdays'
 import { sortStandings, type Standing } from '../lib/standings'
 import { supabase } from '../lib/supabase'
@@ -36,13 +37,16 @@ async function loadHome(leagueId: string, userId: string) {
       .or(`home_user_id.eq.${userId},away_user_id.eq.${userId}`),
     supabase
       .from('league_members')
-      .select('user_id, team_name, logo_path')
+      .select('user_id, team_name, logo_path, calendar_position')
       .eq('league_id', leagueId),
     supabase.from('standings').select('*').eq('league_id', leagueId),
   ])
   for (const r of [matchdays, lineups, fixtures, members, standings])
     if (r.error) throw r.error
   return {
+    teamOrder: calendarTeams(
+      members.data as { user_id: string; calendar_position: number | null }[],
+    ),
     standings: sortStandings(standings.data as Standing[]),
     matchdays: matchdays.data as Matchday[],
     withLineup: new Set(
@@ -72,17 +76,33 @@ export default function Home() {
   )
   const { data, error } = useAsyncData(loader)
 
-  const matchday = data ? pickCurrentMatchday(data.matchdays, now) : null
+  const me = membership.user_id
+  // Giornata mostrata: la successiva all'ultima calcolata, anche se l'admin
+  // non l'ha ancora creata (avversario preso dal sorteggio del calendario)
+  const round = data ? roundAfterLastScored(data.matchdays) : null
+  const lastRound = data
+    ? Math.max(
+        data.teamOrder.length >= 2 ? SEASON_ROUNDS : 0,
+        ...data.matchdays.map((m) => m.number),
+      )
+    : 0
+  const seasonOver = round !== null && lastRound > 0 && round > lastRound
+  const matchday =
+    data?.matchdays.find((m) => m.number === round && !seasonOver) ?? null
   const open = matchday ? isLineupOpen(matchday, now) : false
   const hasLineup = matchday ? data!.withLineup.has(matchday.id) : false
   const fixture = matchday
     ? data!.fixtures.find((f) => f.matchday_id === matchday.id)
     : undefined
-  const opponentId = fixture
-    ? fixture.home_user_id === membership.user_id
-      ? fixture.away_user_id
-      : fixture.home_user_id
-    : null
+  const pairing =
+    data && round !== null && !matchday && !seasonOver
+      ? pairingsForRound(data.teamOrder, round).find(
+          (p) => p.home === me || p.away === me,
+        )
+      : undefined
+  const homeId = fixture?.home_user_id ?? pairing?.home ?? null
+  const awayId = fixture?.away_user_id ?? pairing?.away ?? null
+  const opponentId = homeId === me ? awayId : homeId
 
   return (
     <section className="space-y-4">
@@ -91,42 +111,49 @@ export default function Home() {
       {error && <Alert>{error}</Alert>}
 
       <Card
-        title={matchday ? `Giornata ${matchday.number}` : 'Prossima giornata'}
+        title={
+          round !== null && !seasonOver
+            ? `Giornata ${round}`
+            : 'Prossima giornata'
+        }
       >
         {!data ? (
           <p className="text-slate-500 dark:text-slate-400">Caricamento…</p>
-        ) : !matchday ? (
+        ) : seasonOver ? (
           <p className="text-slate-500 dark:text-slate-400">
-            Nessuna giornata in programma per ora.{' '}
-            {isAdmin && (
-              <Link
-                to="/admin"
-                className="font-semibold text-green-700 underline dark:text-green-400"
-              >
-                Crea una giornata
-              </Link>
-            )}
+            Campionato concluso: tutte le giornate sono state calcolate.
           </p>
+        ) : !matchday ? (
+          <div className="space-y-3">
+            {opponentId && (
+              <OpponentLine
+                opponentName={data.teams.get(opponentId) ?? ''}
+                opponentLogo={data.logos.get(opponentId)}
+                atHome={homeId === me}
+              />
+            )}
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              La giornata non è ancora stata aperta: si potrà inserire la
+              formazione quando l'admin la crea.{' '}
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  className="font-semibold text-green-700 underline dark:text-green-400"
+                >
+                  Crea la giornata
+                </Link>
+              )}
+            </p>
+          </div>
         ) : (
           <div className="space-y-3">
             {opponentId && (
-              <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                <TeamLogo
-                  path={data.logos.get(opponentId)}
-                  name={data.teams.get(opponentId) ?? ''}
-                  size="md"
-                />
-                {fixture!.home_user_id === membership.user_id
-                  ? 'In casa contro '
-                  : 'In trasferta contro '}
-                <strong>{data.teams.get(opponentId)}</strong> ·{' '}
-                <Link
-                  to={`/partita/${fixture!.id}`}
-                  className="font-semibold text-green-700 underline dark:text-green-400"
-                >
-                  Vedi la sfida
-                </Link>
-              </p>
+              <OpponentLine
+                opponentName={data.teams.get(opponentId) ?? ''}
+                opponentLogo={data.logos.get(opponentId)}
+                atHome={homeId === me}
+                fixtureId={fixture?.id}
+              />
             )}
             {open ? (
               <>
@@ -230,5 +257,36 @@ export default function Home() {
         </Card>
       )}
     </section>
+  )
+}
+
+function OpponentLine({
+  opponentName,
+  opponentLogo,
+  atHome,
+  fixtureId,
+}: {
+  opponentName: string
+  opponentLogo: string | null | undefined
+  atHome: boolean
+  fixtureId?: string
+}) {
+  return (
+    <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+      <TeamLogo path={opponentLogo} name={opponentName} size="md" />
+      {atHome ? 'In casa contro ' : 'In trasferta contro '}
+      <strong>{opponentName}</strong>
+      {fixtureId && (
+        <>
+          {' · '}
+          <Link
+            to={`/partita/${fixtureId}`}
+            className="font-semibold text-green-700 underline dark:text-green-400"
+          >
+            Vedi la sfida
+          </Link>
+        </>
+      )}
+    </p>
   )
 }

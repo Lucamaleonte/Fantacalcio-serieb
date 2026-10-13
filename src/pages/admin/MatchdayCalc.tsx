@@ -178,7 +178,11 @@ export default function MatchdayCalc({
                     </span>
                   </summary>
                   <div className="px-3 pb-3">
-                    <ScoreDetailsView details={r.details} points={r.points} />
+                    <ScoreDetailsView
+                      details={r.details}
+                      points={r.points}
+                      votes={data.votes}
+                    />
                   </div>
                 </details>
               </li>

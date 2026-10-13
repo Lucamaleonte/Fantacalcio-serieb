@@ -2,10 +2,12 @@
 import { fetchAllPlayers } from '../../lib/players'
 import { supabase } from '../../lib/supabase'
 import type { Fixture, Matchday, Player } from '../../lib/types'
+import type { VoteEvents } from '../../lib/voteEvents'
 
 export interface StoredVote {
   vote: number | null
   fantavote: number | null
+  events: VoteEvents
 }
 
 export interface LineupRow {
@@ -41,7 +43,7 @@ export async function loadMatchdayData(
       fetchAllPlayers(leagueId),
       supabase
         .from('player_votes')
-        .select('player_id, vote, fantavote')
+        .select('player_id, vote, fantavote, events')
         .eq('matchday_id', matchdayId)
         .range(0, 4999),
       supabase
@@ -67,7 +69,7 @@ export async function loadMatchdayData(
     votes: new Map(
       (votes.data as ({ player_id: string } & StoredVote)[]).map((v) => [
         v.player_id,
-        { vote: v.vote, fantavote: v.fantavote },
+        { vote: v.vote, fantavote: v.fantavote, events: v.events },
       ]),
     ),
     lineups: lineups.data as LineupRow[],
@@ -79,6 +81,8 @@ export interface VoteInput {
   player_id: string
   vote: number | null
   fantavote: number | null
+  // Assente = il database mantiene gli eventi già salvati
+  events?: VoteEvents
 }
 
 // Salva (upsert) i voti; ritorna quanti sono stati salvati

@@ -6,19 +6,14 @@ import TeamLogo from '../components/TeamLogo'
 import { Alert, Button, Card } from '../components/ui'
 import { useCurrentLeague } from '../hooks/league'
 import { useAsyncData } from '../hooks/useAsyncData'
-import { useNow } from '../hooks/useNow'
-import { calendarTeams, pairingsForRound } from '../lib/calendar'
+import { calendarTeams, pairingsForRound, SEASON_ROUNDS } from '../lib/calendar'
 import {
   formatDeadline,
-  pickCurrentMatchday,
+  roundAfterLastScored,
   STATUS_LABELS,
 } from '../lib/matchdays'
 import { supabase } from '../lib/supabase'
 import type { Fixture, Matchday } from '../lib/types'
-
-// Giornate mostrate anche se non ancora create: la lega parte dalla 6ª
-// giornata di Serie B e finisce con la 38ª, quindi 33 giornate
-const SEASON_ROUNDS = 33
 
 interface Match {
   // Solo per le giornate già create
@@ -135,22 +130,14 @@ type View = 'mine' | 'all'
 
 export default function Calendario() {
   const { league, membership } = useCurrentLeague()
-  const now = useNow(60_000)
   const loader = useCallback(() => loadCalendario(league.id), [league.id])
   const { data, error, loading, reload } = useAsyncData(loader)
   const [view, setView] = useState<View>('mine')
 
   const me = membership.user_id
   const rounds = data ? buildRounds(data) : []
-  // Giornata da evidenziare: quella in corso, o la successiva all'ultima calcolata
-  const picked = data ? pickCurrentMatchday(data.matchdays, now) : null
-  const current = !data
-    ? null
-    : !picked
-      ? 1
-      : picked.status === 'scored'
-        ? picked.number + 1
-        : picked.number
+  // Giornata da evidenziare: la successiva all'ultima calcolata
+  const current = data ? roundAfterLastScored(data.matchdays) : null
   const inCalendar = data?.teamOrder.includes(me) ?? false
 
   // All'apertura e al cambio di vista: porta in vista la giornata corrente

@@ -25,6 +25,17 @@ export function pickCurrentMatchday(
   return [...matchdays].sort((a, b) => b.number - a.number)[0] ?? null
 }
 
+// Giornata da mostrare in Home e da evidenziare nel Calendario: quella
+// successiva all'ultima calcolata (la 1 se non ne è stata calcolata nessuna)
+export function roundAfterLastScored(matchdays: Matchday[]): number {
+  return (
+    matchdays.reduce(
+      (max, m) => (m.status === 'scored' ? Math.max(max, m.number) : max),
+      0,
+    ) + 1
+  )
+}
+
 export function nextMatchdayNumber(matchdays: Matchday[]): number {
   return matchdays.reduce((max, m) => Math.max(max, m.number), 0) + 1
 }

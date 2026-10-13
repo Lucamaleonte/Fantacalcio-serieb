@@ -36,7 +36,7 @@ const players = [
 
 let line = 0
 function row(name: string, team: string): VoteRow {
-  return { line: ++line, name, team, vote: 6, fantavote: 6 }
+  return { line: ++line, name, team, vote: 6, fantavote: 6, events: {} }
 }
 
 describe('surnameKey / sameTeam', () => {

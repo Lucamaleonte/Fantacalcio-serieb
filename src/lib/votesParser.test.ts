@@ -29,14 +29,54 @@ describe('parseVotes', () => {
     )
     expect(errors).toEqual([])
     expect(rows).toEqual([
-      { line: 2, name: 'Cognome', team: 'Squadra', vote: 6.5, fantavote: 7.5 },
+      {
+        line: 2,
+        name: 'Cognome',
+        team: 'Squadra',
+        vote: 6.5,
+        fantavote: 7.5,
+        events: {},
+      },
       {
         line: 3,
         name: 'Altro G.',
         team: 'Squadra',
         vote: null,
         fantavote: null,
+        events: {},
       },
+    ])
+  })
+
+  it('colonne facoltative dei bonus e malus', () => {
+    expect(parseVotes('Nome;Squadra;Voto;Fantavoto\nA;X;6;6').hasEvents).toBe(
+      false,
+    )
+    const { rows, errors, hasEvents } = parseVotes(
+      [
+        'Nome;Squadra;Voto;Fantavoto;Gol;Assist;Amm;Esp;GS;PI',
+        'Mosquera D;Verona;7,5;13,5;2;0;0;0;0;0',
+        'Seghetti J;Empoli;7,5;3;;;1;;4;',
+        'Plizzari A;Sudtirol;6,5;7,5;-;-;-;-;-;1',
+      ].join('\n'),
+    )
+    expect(errors).toEqual([])
+    expect(hasEvents).toBe(true)
+    expect(rows.map((r) => r.events)).toEqual([
+      { gol: 2 },
+      { amm: 1, gs: 4 },
+      { pi: 1 },
+    ])
+  })
+
+  it('bonus e malus non validi', () => {
+    const { rows, errors } = parseVotes(
+      'Nome;Squadra;Voto;Fantavoto;Gol\nA;X;6;9;uno\nB;X;6;6;1,5',
+    )
+    expect(rows).toEqual([])
+    expect(errors.map((e) => e.reason)).toEqual([
+      'Bonus/malus "uno" non valido (serve un numero intero)',
+      'Bonus/malus "1,5" non valido (serve un numero intero)',
     ])
   })
 
