@@ -5,6 +5,7 @@ import {
   formationSlots,
   moveItem,
   parseFormation,
+  restoreLineup,
   validateLineup,
 } from './lineup'
 import type { PlayerRole } from './types'
@@ -89,6 +90,54 @@ describe('arrangeStarters', () => {
       'A2',
     ])
     expect(leftovers).toEqual(['D4'])
+  })
+})
+
+describe('restoreLineup', () => {
+  const byId = new Map(players.map((p) => [p.id, p]))
+
+  it('ricopia la formazione salvata senza cambiarla', () => {
+    expect(
+      restoreLineup(
+        { formation: '4-4-2', starters: starters442, bench: ['P2', 'A3'] },
+        byId,
+        ALLOWED,
+        '4-4-2',
+      ),
+    ).toEqual({
+      formation: '4-4-2',
+      starters: starters442,
+      bench: ['P2', 'A3'],
+      removed: false,
+    })
+  })
+
+  it('toglie chi non è più in rosa e lascia il posto vuoto', () => {
+    const result = restoreLineup(
+      {
+        formation: '4-4-2',
+        starters: starters442.map((id) => (id === 'A2' ? 'X9' : id)),
+        bench: ['Y1', 'A3'],
+      },
+      byId,
+      ALLOWED,
+      '4-4-2',
+    )
+    expect(result.starters[10]).toBeNull()
+    expect(result.bench).toEqual(['A3'])
+    expect(result.removed).toBe(true)
+  })
+
+  it('modulo non più consentito: usa quello di ripiego', () => {
+    const result = restoreLineup(
+      { formation: '4-4-2', starters: starters442, bench: ['P2'] },
+      byId,
+      ['3-5-2'],
+      '3-5-2',
+    )
+    expect(result.formation).toBe('3-5-2')
+    expect(result.starters[8]).toBeNull()
+    expect(result.bench).toEqual(['D4', 'P2'])
   })
 })
 

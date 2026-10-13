@@ -11,7 +11,9 @@ import {
   fillBench,
   formationSlots,
   moveItem,
+  restoreLineup,
   validateLineup,
+  type StoredLineup,
 } from '../lib/lineup'
 import {
   formatCountdown,
@@ -47,6 +49,16 @@ export default function Formazione() {
     matchdays?.find((m) => m.id === selectedId) ??
     pickCurrentMatchday(matchdays ?? [], now)
   const open = matchday ? isLineupOpen(matchday, now) : false
+  // Giornate precedenti (per copiare l'ultima formazione): stessa lista
+  // finché non cambia la giornata, così il caricamento non si ripete
+  const matchdayNumber = matchday?.number
+  const earlier = useMemo(
+    () =>
+      (matchdays ?? []).filter(
+        (m) => matchdayNumber !== undefined && m.number < matchdayNumber,
+      ),
+    [matchdays, matchdayNumber],
+  )
 
   return (
     <section className="space-y-4">
@@ -106,6 +118,7 @@ export default function Formazione() {
             key={matchday.id}
             league={league}
             matchday={matchday}
+            earlier={earlier}
             userId={membership.user_id}
             open={open}
           />
@@ -205,19 +218,37 @@ function OpponentLink({
   )
 }
 
-interface SavedLineup {
-  formation: string
-  starters: string[]
-  bench: string[]
+interface SavedLineup extends StoredLineup {
   updated_at: string
+}
+
+interface LineupRow {
+  matchday_id: string
+  formation: string
+  updated_at: string
+  lineup_players: { player_id: string; slot: string; position: number }[]
+}
+
+const LINEUP_COLUMNS =
+  'matchday_id, formation, updated_at, lineup_players(player_id, slot, position)'
+
+function toSaved(row: LineupRow): SavedLineup {
+  const rows = [...row.lineup_players].sort((a, b) => a.position - b.position)
+  return {
+    formation: row.formation,
+    updated_at: row.updated_at,
+    starters: rows.filter((r) => r.slot === 'starter').map((r) => r.player_id),
+    bench: rows.filter((r) => r.slot === 'bench').map((r) => r.player_id),
+  }
 }
 
 async function loadMyLineup(
   matchdayId: string,
+  earlier: Matchday[],
   leagueId: string,
   userId: string,
 ) {
-  const [roster, lineup] = await Promise.all([
+  const [roster, lineup, previous] = await Promise.all([
     supabase
       .from('roster_entries')
       .select('player:players(id, league_id, name, role, real_team, active)')
@@ -225,55 +256,63 @@ async function loadMyLineup(
       .eq('user_id', userId),
     supabase
       .from('lineups')
-      .select(
-        'formation, updated_at, lineup_players(player_id, slot, position)',
-      )
+      .select(LINEUP_COLUMNS)
       .eq('matchday_id', matchdayId)
       .eq('user_id', userId)
       .maybeSingle(),
+    // Le mie formazioni delle giornate precedenti (per copiarle)
+    earlier.length > 0
+      ? supabase
+          .from('lineups')
+          .select(LINEUP_COLUMNS)
+          .eq('user_id', userId)
+          .in(
+            'matchday_id',
+            earlier.map((m) => m.id),
+          )
+      : Promise.resolve({ data: [], error: null }),
   ])
   if (roster.error) throw roster.error
   if (lineup.error) throw lineup.error
+  if (previous.error) throw previous.error
 
   const players = (roster.data as unknown as { player: Player }[])
     .map((r) => r.player)
     .sort(comparePlayers)
 
-  let saved: SavedLineup | null = null
-  if (lineup.data) {
-    const rows = (
-      lineup.data.lineup_players as {
-        player_id: string
-        slot: string
-        position: number
-      }[]
-    ).sort((a, b) => a.position - b.position)
-    saved = {
-      formation: lineup.data.formation,
-      updated_at: lineup.data.updated_at,
-      starters: rows
-        .filter((r) => r.slot === 'starter')
-        .map((r) => r.player_id),
-      bench: rows.filter((r) => r.slot === 'bench').map((r) => r.player_id),
-    }
+  // La più recente: giornata con il numero più alto
+  const previousRows = previous.data as unknown as LineupRow[]
+  const last = [...earlier]
+    .sort((a, b) => b.number - a.number)
+    .map((m) => ({
+      number: m.number,
+      row: previousRows.find((l) => l.matchday_id === m.id),
+    }))
+    .find((x) => x.row)
+
+  return {
+    players,
+    saved: lineup.data ? toSaved(lineup.data as unknown as LineupRow) : null,
+    previous: last ? { number: last.number, lineup: toSaved(last.row!) } : null,
   }
-  return { players, saved }
 }
 
 function LineupLoader({
   league,
   matchday,
+  earlier,
   userId,
   open,
 }: {
   league: League
   matchday: Matchday
+  earlier: Matchday[]
   userId: string
   open: boolean
 }) {
   const loader = useCallback(
-    () => loadMyLineup(matchday.id, league.id, userId),
-    [matchday.id, league.id, userId],
+    () => loadMyLineup(matchday.id, earlier, league.id, userId),
+    [matchday.id, earlier, league.id, userId],
   )
   const { data, error, loading, reload } = useAsyncData(loader)
 
@@ -300,6 +339,7 @@ function LineupLoader({
       matchday={matchday}
       players={data.players}
       saved={data.saved}
+      previous={data.previous}
       open={open}
       onSaved={reload}
     />
@@ -311,6 +351,7 @@ function LineupEditor({
   matchday,
   players,
   saved,
+  previous,
   open,
   onSaved,
 }: {
@@ -318,29 +359,26 @@ function LineupEditor({
   matchday: Matchday
   players: Player[]
   saved: SavedLineup | null
+  previous: { number: number; lineup: SavedLineup } | null
   open: boolean
   onSaved: () => void
 }) {
   const byId = useMemo(() => new Map(players.map((p) => [p.id, p])), [players])
+  const defaultFormation = league.allowed_formations.includes('4-4-2')
+    ? '4-4-2'
+    : league.allowed_formations[0]
+  const restore = (lineup: StoredLineup) =>
+    restoreLineup(lineup, byId, league.allowed_formations, defaultFormation)
 
   // Stato iniziale: formazione salvata (senza chi non è più in rosa) o vuota
-  const [initial] = useState(() => {
-    const defaultFormation = league.allowed_formations.includes('4-4-2')
-      ? '4-4-2'
-      : league.allowed_formations[0]
-    const formation = saved?.formation ?? defaultFormation
-    const starters = (saved?.starters ?? [])
-      .map((id) => byId.get(id))
-      .filter((p) => !!p)
-    const { slots, leftovers } = arrangeStarters(starters, formation)
-    const bench = [
-      ...leftovers,
-      ...(saved?.bench ?? []).filter((id) => byId.has(id)),
-    ]
-    const removed =
-      !!saved && [...saved.starters, ...saved.bench].some((id) => !byId.has(id))
-    return { formation, starters: slots, bench, removed }
-  })
+  const [initial] = useState(() =>
+    restore(saved ?? { formation: defaultFormation, starters: [], bench: [] }),
+  )
+  // Formazione copiata da una giornata precedente (avviso finché non si salva)
+  const [copied, setCopied] = useState<{
+    number: number
+    removed: boolean
+  } | null>(null)
 
   const [formation, setFormation] = useState(initial.formation)
   const [starters, setStarters] = useState<(string | null)[]>(initial.starters)
@@ -397,6 +435,25 @@ function LineupEditor({
     setPicking(null)
   }
 
+  function copyPrevious() {
+    if (!previous) return
+    const hasPlayers = starters.some((id) => id !== null) || bench.length > 0
+    if (
+      hasPlayers &&
+      !window.confirm(
+        `Sostituire la formazione attuale con quella della giornata ${previous.number}?`,
+      )
+    )
+      return
+    const next = restore(previous.lineup)
+    change({
+      formation: next.formation,
+      starters: next.starters,
+      bench: next.bench,
+    })
+    setCopied({ number: previous.number, removed: next.removed })
+  }
+
   async function save() {
     setBusy(true)
     setError(null)
@@ -411,6 +468,7 @@ function LineupEditor({
     } else {
       setDirty(false)
       setSavedNow(true)
+      setCopied(null)
       onSaved()
     }
     setBusy(false)
@@ -431,6 +489,20 @@ function LineupEditor({
         <Alert kind="info">
           Alcuni giocatori della formazione salvata non sono più nella tua rosa
           e sono stati tolti.
+        </Alert>
+      )}
+
+      {open && previous && (
+        <Button variant="secondary" className="w-full" onClick={copyPrevious}>
+          ⧉ Copia la formazione della giornata {previous.number}
+        </Button>
+      )}
+      {copied && (
+        <Alert kind="success">
+          Copiata la formazione della giornata {copied.number}: controllala e
+          premi &quot;Salva formazione&quot;.
+          {copied.removed &&
+            ' Alcuni giocatori non sono più nella tua rosa e sono stati tolti.'}
         </Alert>
       )}
 

@@ -60,6 +60,38 @@ export interface LineupDraft {
   bench: string[]
 }
 
+export interface StoredLineup {
+  formation: string
+  starters: string[]
+  bench: string[]
+}
+
+// Formazione salvata (di questa o di un'altra giornata) -> bozza modificabile.
+// Toglie chi non è più in rosa e usa `fallback` se il modulo non è più
+// consentito; i titolari che non trovano posto vanno in testa alla panchina.
+export function restoreLineup(
+  saved: StoredLineup,
+  roster: Map<string, RoledPlayer>,
+  allowedFormations: string[],
+  fallback: string,
+): LineupDraft & { removed: boolean } {
+  const formation = allowedFormations.includes(saved.formation)
+    ? saved.formation
+    : fallback
+  const starters = saved.starters
+    .map((id) => roster.get(id))
+    .filter((p): p is RoledPlayer => !!p)
+  const { slots, leftovers } = arrangeStarters(starters, formation)
+  const bench = [
+    ...leftovers,
+    ...saved.bench.filter((id) => roster.has(id) && !leftovers.includes(id)),
+  ]
+  const removed = [...saved.starters, ...saved.bench].some(
+    (id) => !roster.has(id),
+  )
+  return { formation, starters: slots, bench, removed }
+}
+
 // Elenco dei problemi (vuoto = formazione valida)
 export function validateLineup(
   draft: LineupDraft,
