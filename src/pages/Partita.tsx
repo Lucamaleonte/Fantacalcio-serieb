@@ -16,8 +16,8 @@ import {
 import { comparePlayers } from '../lib/roles'
 import type { ScoreDetails } from '../lib/scoring'
 import { supabase } from '../lib/supabase'
-import type { Fixture, Matchday, Player } from '../lib/types'
-import type { VoteEvents } from '../lib/voteEvents'
+import type { Fixture, Matchday, Player, PlayerRole } from '../lib/types'
+import { eventIcons, type VoteEvents } from '../lib/voteEvents'
 
 type LineupPlayer = Pick<Player, 'id' | 'name' | 'role' | 'real_team'>
 
@@ -251,21 +251,18 @@ export default function Partita() {
         </Alert>
       )}
 
-      {/* Calcolata: una squadra sotto l'altra (su telefono servono spazio
-          per voto, fantavoto e bonus); prima: affiancate */}
-      <div
-        className={`grid gap-2 ${scored ? 'sm:grid-cols-2' : 'grid-cols-2'}`}
-      >
-        {[f.home_user_id, f.away_user_id].map((userId) => (
-          <TeamColumn
-            key={userId}
-            teamName={scored ? team(userId).name : null}
-            lineup={data.lineups.get(userId) ?? null}
-            score={scored ? (data.scores.get(userId) ?? null) : null}
-            votes={data.votes}
-          />
-        ))}
-      </div>
+      <MatchBoard
+        home={buildSide(
+          data.lineups.get(f.home_user_id) ?? null,
+          scored ? (data.scores.get(f.home_user_id) ?? null) : null,
+          data.votes,
+        )}
+        away={buildSide(
+          data.lineups.get(f.away_user_id) ?? null,
+          scored ? (data.scores.get(f.away_user_id) ?? null) : null,
+          data.votes,
+        )}
+      />
 
       {!scored && (
         <Button variant="secondary" className="w-full" onClick={reload}>
@@ -297,245 +294,236 @@ function TeamName({
   )
 }
 
-const columnClass =
-  'min-w-0 rounded-2xl border border-slate-200 bg-white p-2 text-sm dark:border-slate-800 dark:bg-slate-900'
+// Mezza riga: un giocatore di una delle due squadre
+interface Cell {
+  id: string
+  name: string
+  role: PlayerRole
+  // Voto base sopra, fantavoto sotto; null prima del calcolo
+  pill: { vote: string; fantavote: string; tone: PillTone } | null
+  events?: VoteEvents
+  // Testo sotto il nome (es. chi è entrato al suo posto)
+  note?: string
+  // Non conta nel punteggio: sbiadito
+  dim: boolean
+  // Entrato dalla panchina: nome in verde
+  accent?: boolean
+}
 
-function TeamColumn({
-  teamName,
-  lineup,
-  score,
-  votes,
-}: {
-  teamName: string | null
-  lineup: TeamLineup | null
-  score: TeamScore | null
-  votes: Votes
-}) {
-  const title = teamName && (
-    <p className="mb-1 truncate font-semibold">{teamName}</p>
-  )
+type PillTone = 'counted' | 'muted' | 'red'
 
-  // Giornata calcolata: voto base, fantavoto e bonus/malus di titolari e panchina
+interface Side {
+  info: string | null
+  message: string | null
+  starters: Cell[]
+  bench: Cell[]
+  total: number | null
+}
+
+function pillValue(value: number | null | undefined): string {
+  return value === null || value === undefined ? '–' : formatValue(value)
+}
+
+function plainCell(p: LineupPlayer): Cell {
+  return { id: p.id, name: p.name, role: p.role, pill: null, dim: false }
+}
+
+// Dati di una squadra per la sfida: prima del calcolo solo i nomi,
+// dopo il calcolo voto base, fantavoto, bonus/malus e sostituzioni
+function buildSide(
+  lineup: TeamLineup | null,
+  score: TeamScore | null,
+  votes: Votes,
+): Side {
   if (score && !score.details.missing && score.details.starters) {
     const d = score.details
     const entered = new Set(
       d.starters.flatMap((s) => (s.sub ? [s.sub.id] : [])),
     )
-    return (
-      <div className={columnClass}>
-        {title}
-        <div className="mb-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-          <span className="min-w-0 flex-1 truncate">
-            {d.formation} ·{' '}
-            {d.substitutions === 1 ? '1 sost.' : `${d.substitutions} sost.`}
-          </span>
-          <VoteHeader />
-        </div>
-        <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-          {d.starters.map((s) => (
-            <li key={s.id} className="py-1">
-              <div className="flex items-center gap-1.5">
-                <RoleBadge role={s.role} small />
-                <PlayerName
-                  name={s.name}
-                  events={votes.get(s.id)?.events}
-                  className={s.sub ? 'text-slate-400 line-through' : ''}
-                />
-                <VoteValues
-                  vote={votes.get(s.id)?.vote ?? null}
-                  fantavote={s.sub ? '–' : formatValue(s.value)}
-                  fantavoteClass={
-                    s.sub
-                      ? 'text-slate-400'
-                      : s.fantavote === null
-                        ? 'text-red-600'
-                        : ''
-                  }
-                />
-              </div>
-              {s.sub && (
-                <div className="flex items-center gap-1.5 pl-6.5 font-medium text-green-700 dark:text-green-400">
-                  <PlayerName
-                    name={`↑ ${s.sub.name}`}
-                    events={votes.get(s.sub.id)?.events}
-                  />
-                  <VoteValues
-                    vote={votes.get(s.sub.id)?.vote ?? null}
-                    fantavote={formatValue(s.sub.fantavote)}
-                  />
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-        <p className="mt-1 text-right font-bold">
-          Totale {formatValue(score.points)}
-        </p>
-        {lineup && (
-          <Bench players={lineup.bench} votes={votes} entered={entered} />
-        )}
-      </div>
-    )
+    return {
+      info: `${d.formation} · ${d.substitutions === 1 ? '1 sost.' : `${d.substitutions} sost.`}`,
+      message: null,
+      starters: d.starters.map((s) => {
+        const v = votes.get(s.id)
+        return s.sub
+          ? {
+              id: s.id,
+              name: s.name,
+              role: s.role,
+              pill: { vote: '–', fantavote: '–', tone: 'muted' },
+              events: v?.events,
+              note: `↑ ${s.sub.name}`,
+              dim: true,
+            }
+          : {
+              id: s.id,
+              name: s.name,
+              role: s.role,
+              pill: {
+                vote: pillValue(v?.vote),
+                fantavote: formatValue(s.value),
+                tone: s.fantavote === null ? 'red' : 'counted',
+              },
+              events: v?.events,
+              dim: false,
+            }
+      }),
+      bench: (lineup?.bench ?? []).map((p) => {
+        const v = votes.get(p.id)
+        const inGame = entered.has(p.id)
+        return {
+          id: p.id,
+          name: inGame ? `↑ ${p.name}` : p.name,
+          role: p.role,
+          pill: {
+            vote: pillValue(v?.vote),
+            fantavote: pillValue(v?.fantavote),
+            tone: inGame ? 'counted' : 'muted',
+          },
+          events: v?.events,
+          accent: inGame,
+          dim: !inGame,
+        }
+      }),
+      total: score.points,
+    }
   }
-
   if (!lineup) {
-    return (
-      <div className={columnClass}>
-        {title}
-        <p className="text-slate-500 dark:text-slate-400">
-          Formazione non inserita
-          {score ? ': 0 punti' : ''}.
-        </p>
-      </div>
-    )
+    return {
+      info: null,
+      message: score
+        ? 'Formazione non inserita: 0 punti'
+        : 'Formazione non inserita',
+      starters: [],
+      bench: [],
+      total: null,
+    }
   }
+  return {
+    info: `Modulo ${lineup.formation}`,
+    message: null,
+    starters: lineup.starters.map(plainCell),
+    bench: lineup.bench.map(plainCell),
+    total: null,
+  }
+}
 
+function pairs(a: Cell[], b: Cell[]): [Cell | undefined, Cell | undefined][] {
+  return Array.from({ length: Math.max(a.length, b.length) }, (_, i) => [
+    a[i],
+    b[i],
+  ])
+}
+
+// Le due formazioni affiancate a specchio: casa a sinistra, trasferta a
+// destra, voti al centro
+function MatchBoard({ home, away }: { home: Side; away: Side }) {
+  const hasBench = home.bench.length > 0 || away.bench.length > 0
   return (
-    <div className={columnClass}>
-      {title}
-      <p className="mb-1 text-xs text-slate-500 dark:text-slate-400">
-        Modulo {lineup.formation}
-      </p>
-      <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-        {lineup.starters.map((p) => (
-          <li key={p.id} className="flex items-center gap-1.5 py-1">
-            <RoleBadge role={p.role} small />
-            <span className="min-w-0 flex-1 truncate">{p.name}</span>
-          </li>
-        ))}
-      </ul>
-      <Bench players={lineup.bench} />
+    <div className="rounded-2xl border border-slate-200 bg-white p-2 text-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="grid grid-cols-2 gap-3 px-1 pb-1 text-xs text-slate-500 dark:text-slate-400">
+        <span className="truncate">{home.info ?? home.message}</span>
+        <span className="truncate text-right">{away.info ?? away.message}</span>
+      </div>
+      <Rows rows={pairs(home.starters, away.starters)} />
+      {(home.total !== null || away.total !== null) && (
+        <div className="grid grid-cols-2 gap-3 border-t border-slate-200 px-1 pt-2 font-bold dark:border-slate-800">
+          <span>
+            {home.total !== null && `Totale ${formatValue(home.total)}`}
+          </span>
+          <span className="text-right">
+            {away.total !== null && `Totale ${formatValue(away.total)}`}
+          </span>
+        </div>
+      )}
+      {hasBench && (
+        <>
+          <p className="mt-4 mb-1 text-center">
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold dark:bg-slate-800">
+              Panchine
+            </span>
+          </p>
+          <Rows rows={pairs(home.bench, away.bench)} />
+        </>
+      )}
     </div>
   )
 }
 
-// Intestazione delle colonne: voto base e fantavoto (voto + bonus/malus)
-function VoteHeader() {
+function Rows({ rows }: { rows: [Cell | undefined, Cell | undefined][] }) {
   return (
-    <>
-      <span className="w-8 shrink-0 text-right" title="Voto base">
-        V
-      </span>
-      <span className="w-9 shrink-0 text-right" title="Fantavoto">
-        FV
-      </span>
-    </>
+    <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+      {rows.map(([left, right], i) => (
+        <li key={i} className="grid grid-cols-2 gap-2 py-1.5">
+          {left ? <Half cell={left} side="left" /> : <span />}
+          {right ? <Half cell={right} side="right" /> : <span />}
+        </li>
+      ))}
+    </ul>
   )
 }
 
-function PlayerName({
-  name,
-  events,
-  className = '',
-}: {
-  name: string
-  events: VoteEvents | undefined
-  className?: string
-}) {
+function Half({ cell, side }: { cell: Cell; side: 'left' | 'right' }) {
+  const right = side === 'right'
+  const dim = cell.dim ? 'opacity-50' : ''
+  const hasIcons = eventIcons(cell.events).length > 0
   return (
-    <span className="flex min-w-0 flex-1 items-center gap-1">
-      <span className={`truncate ${className}`}>{name}</span>
-      <EventIcons events={events} />
-    </span>
+    <div
+      className={`flex min-w-0 items-start gap-1.5 ${right ? 'flex-row-reverse text-right' : ''}`}
+    >
+      <span className={dim}>
+        <RoleBadge role={cell.role} small />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span
+          className={`line-clamp-2 leading-tight font-medium break-words ${dim} ${cell.accent ? 'text-green-700 dark:text-green-400' : ''}`}
+        >
+          {cell.name}
+        </span>
+        {(hasIcons || cell.note) && (
+          <span
+            className={`mt-0.5 flex min-w-0 items-center gap-1 ${right ? 'flex-row-reverse' : ''}`}
+          >
+            <EventIcons events={cell.events} className={dim} />
+            {cell.note && (
+              <span className="truncate text-xs font-medium text-green-700 dark:text-green-400">
+                {cell.note}
+              </span>
+            )}
+          </span>
+        )}
+      </span>
+      {cell.pill && <Pill {...cell.pill} className={dim} />}
+    </div>
   )
 }
 
-function VoteValues({
+// Voto base (sopra) e fantavoto (sotto)
+function Pill({
   vote,
   fantavote,
-  fantavoteClass = '',
+  tone,
+  className,
 }: {
-  vote: number | null
+  vote: string
   fantavote: string
-  fantavoteClass?: string
+  tone: PillTone
+  className: string
 }) {
+  const bottom = {
+    counted: 'bg-green-600 text-white',
+    muted: 'bg-slate-300 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
+    red: 'bg-red-600 text-white',
+  }[tone]
   return (
-    <>
-      <span className="w-8 shrink-0 text-right text-slate-500 tabular-nums dark:text-slate-400">
-        {formatValue(vote)}
+    <span
+      className={`flex w-9 shrink-0 flex-col overflow-hidden rounded-md text-center text-xs leading-5 font-bold tabular-nums ${className}`}
+      aria-label={`Voto ${vote}, fantavoto ${fantavote}`}
+    >
+      <span className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+        {vote}
       </span>
-      <span
-        className={`w-9 shrink-0 text-right font-semibold tabular-nums ${fantavoteClass}`}
-      >
-        {fantavote}
-      </span>
-    </>
-  )
-}
-
-function Bench({
-  players,
-  votes,
-  entered,
-}: {
-  players: LineupPlayer[]
-  votes?: Votes
-  entered?: Set<string>
-}) {
-  if (players.length === 0) return null
-  // Giornata calcolata: voti anche dei panchinari (in verde chi è entrato)
-  if (votes && entered) {
-    return (
-      <div className="mt-2 border-t border-slate-200 pt-2 dark:border-slate-800">
-        <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400">
-          <span className="flex-1">Panchina</span>
-          <VoteHeader />
-        </div>
-        <ol className="space-y-0.5">
-          {players.map((p, i) => {
-            const v = votes.get(p.id)
-            const inGame = entered.has(p.id)
-            return (
-              <li
-                key={p.id}
-                className={`flex items-center gap-1.5 ${
-                  inGame ? 'font-medium text-green-700 dark:text-green-400' : ''
-                }`}
-              >
-                <span className="w-4 shrink-0 text-right text-xs text-slate-400">
-                  {i + 1}
-                </span>
-                <span className="w-3 shrink-0 text-xs font-bold text-slate-500">
-                  {p.role}
-                </span>
-                <PlayerName
-                  name={inGame ? `↑ ${p.name}` : p.name}
-                  events={v?.events}
-                />
-                <VoteValues
-                  vote={v?.vote ?? null}
-                  fantavote={formatValue(v?.fantavote ?? null)}
-                  fantavoteClass={
-                    inGame
-                      ? ''
-                      : 'font-normal text-slate-500 dark:text-slate-400'
-                  }
-                />
-              </li>
-            )
-          })}
-        </ol>
-      </div>
-    )
-  }
-  return (
-    <div className="mt-2 border-t border-slate-200 pt-2 dark:border-slate-800">
-      <p className="mb-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
-        Panchina
-      </p>
-      <ol className="space-y-0.5 text-xs">
-        {players.map((p, i) => (
-          <li key={p.id} className="flex items-center gap-1.5">
-            <span className="w-4 shrink-0 text-right text-slate-400">
-              {i + 1}
-            </span>
-            <span className="w-3 shrink-0 font-bold text-slate-500">
-              {p.role}
-            </span>
-            <span className="min-w-0 flex-1 truncate">{p.name}</span>
-          </li>
-        ))}
-      </ol>
-    </div>
+      <span className={bottom}>{fantavote}</span>
+    </span>
   )
 }
