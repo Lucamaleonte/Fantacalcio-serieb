@@ -310,7 +310,7 @@ interface Cell {
   accent?: boolean
 }
 
-type PillTone = 'counted' | 'muted' | 'red'
+type PillTone = 'counted' | 'muted'
 
 interface Side {
   info: string | null
@@ -345,14 +345,19 @@ function buildSide(
       message: null,
       starters: d.starters.map((s) => {
         const v = votes.get(s.id)
-        return s.sub
+        // Senza voto (sostituito o senza sostituto): sbiadito
+        return s.fantavote === null
           ? {
               id: s.id,
               name: s.name,
               role: s.role,
-              pill: { vote: '–', fantavote: '–', tone: 'muted' },
+              pill: {
+                vote: '–',
+                fantavote: s.sub || s.value === 0 ? '–' : formatValue(s.value),
+                tone: 'muted',
+              },
               events: v?.events,
-              note: `↑ ${s.sub.name}`,
+              note: s.sub ? `↑ ${s.sub.name}` : undefined,
               dim: true,
             }
           : {
@@ -362,7 +367,7 @@ function buildSide(
               pill: {
                 vote: pillValue(v?.vote),
                 fantavote: formatValue(s.value),
-                tone: s.fantavote === null ? 'red' : 'counted',
+                tone: 'counted',
               },
               events: v?.events,
               dim: false,
@@ -513,7 +518,6 @@ function Pill({
   const bottom = {
     counted: 'bg-green-600 text-white',
     muted: 'bg-slate-300 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
-    red: 'bg-red-600 text-white',
   }[tone]
   return (
     <span

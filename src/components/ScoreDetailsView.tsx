@@ -58,18 +58,20 @@ export default function ScoreDetailsView({
       <ul className="divide-y divide-slate-100 dark:divide-slate-800">
         {details.starters.map((s) => {
           const shown = s.sub ? s.sub.id : s.id
+          // Senza voto (sostituito o senza sostituto): sbiadito
+          const noVote = s.fantavote === null
           return (
             <li key={s.id} className="flex items-center gap-2 py-1.5">
               <RoleBadge role={s.role} />
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1">
                   <span
-                    className={`truncate ${s.sub ? 'text-slate-400 line-through' : ''}`}
+                    className={`truncate ${noVote ? 'text-slate-400 line-through' : ''}`}
                   >
                     {s.name}
-                    {s.sub && <span className="no-underline"> (SV)</span>}
+                    {noVote && <span className="no-underline"> (SV)</span>}
                   </span>
-                  {!s.sub && <EventIcons events={votes?.get(s.id)?.events} />}
+                  {!noVote && <EventIcons events={votes?.get(s.id)?.events} />}
                 </span>
                 {s.sub && (
                   <span className="flex items-center gap-1 font-medium text-green-700 dark:text-green-400">
@@ -81,15 +83,15 @@ export default function ScoreDetailsView({
               {votes && baseVote(shown)}
               <span
                 className={`shrink-0 text-right tabular-nums ${votes ? 'w-12' : ''} ${
-                  s.fantavote === null && !s.sub
-                    ? 'text-red-600'
+                  noVote && !s.sub
+                    ? 'text-slate-400 dark:text-slate-500'
                     : 'font-semibold'
                 }`}
               >
                 {s.sub
                   ? format(s.sub.fantavote)
-                  : s.fantavote === null
-                    ? `SV (${format(s.value)})`
+                  : noVote && s.value === 0
+                    ? '–'
                     : format(s.value)}
               </span>
             </li>
