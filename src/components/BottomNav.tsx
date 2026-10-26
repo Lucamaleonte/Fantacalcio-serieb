@@ -4,7 +4,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 const links: { to: string; label: string; also?: string[] }[] = [
   { to: '/', label: 'Home' },
   { to: '/giocatori', label: 'Giocatori' },
-  { to: '/rosa', label: 'Rosa' },
+  { to: '/rosa', label: 'Rosa', also: ['/mercato'] },
   { to: '/formazione', label: 'Formazione' },
   { to: '/classifica', label: 'Classifica', also: ['/calendario', '/partita'] },
 ]

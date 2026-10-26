@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import PageTitle from '../components/PageTitle'
 import {
   Alert,
@@ -15,6 +16,7 @@ import { errorMessage } from '../lib/errors'
 import { normalizeName } from '../lib/normalize'
 import { fetchAllPlayers } from '../lib/players'
 import { comparePlayers, ROLE_LABELS } from '../lib/roles'
+import { formatDelta } from '../lib/trades'
 import {
   parseCost,
   summarizeRoster,
@@ -32,7 +34,7 @@ async function loadRosters(leagueId: string) {
   const [members, entries] = await Promise.all([
     supabase
       .from('league_members')
-      .select('user_id, team_name')
+      .select('user_id, team_name, trade_balance')
       .eq('league_id', leagueId),
     supabase
       .from('roster_entries')
@@ -44,9 +46,13 @@ async function loadRosters(leagueId: string) {
   if (members.error) throw members.error
   if (entries.error) throw entries.error
   return {
-    teams: (members.data as { user_id: string; team_name: string }[]).sort(
-      (a, b) => a.team_name.localeCompare(b.team_name, 'it'),
-    ),
+    teams: (
+      members.data as {
+        user_id: string
+        team_name: string
+        trade_balance: number
+      }[]
+    ).sort((a, b) => a.team_name.localeCompare(b.team_name, 'it')),
     entries: entries.data as unknown as RosterEntry[],
   }
 }
@@ -67,9 +73,11 @@ export default function Rosa() {
         .sort((a, b) => comparePlayers(a.player, b.player)),
     [data, teamId],
   )
+  const balance =
+    data?.teams.find((t) => t.user_id === teamId)?.trade_balance ?? 0
   const summary = useMemo(
-    () => summarizeRoster(entries, league),
-    [entries, league],
+    () => summarizeRoster(entries, league, balance),
+    [entries, league, balance],
   )
   const ownedIds = useMemo(
     () => new Set(data?.entries.map((e) => e.player_id)),
@@ -125,6 +133,25 @@ export default function Rosa() {
         <>
           <BudgetCard summary={summary} />
           <RoleCounters summary={summary} />
+
+          <Link
+            to="/mercato"
+            className="flex min-h-11 items-center justify-between rounded-xl border border-slate-300 bg-white px-4 font-semibold dark:border-slate-700 dark:bg-slate-900"
+          >
+            <span>
+              Mercato scambi{' '}
+              <span
+                className={
+                  league.trade_market_open
+                    ? 'text-green-700 dark:text-green-400'
+                    : 'text-slate-500 dark:text-slate-400'
+                }
+              >
+                ({league.trade_market_open ? 'aperto' : 'chiuso'})
+              </span>
+            </span>
+            <span aria-hidden="true">›</span>
+          </Link>
 
           {isAdmin && (
             <Button className="w-full" onClick={() => setAdding(true)}>
@@ -182,18 +209,17 @@ export default function Rosa() {
 }
 
 function BudgetCard({ summary }: { summary: RosterSummary }) {
-  const percent = Math.min(
-    100,
-    Math.round((summary.spent / summary.budget) * 100),
-  )
+  const total = summary.budget + summary.balance
+  const percent =
+    total > 0 ? Math.min(100, Math.round((summary.spent / total) * 100)) : 100
   const over = summary.remaining < 0
   return (
     <Card>
       <div className="mb-2 grid grid-cols-3 text-center">
-        <Stat label="Speso" value={summary.spent} />
-        <Stat label="Totale" value={summary.budget} />
+        <Stat label="Valore rosa" value={summary.spent} />
+        <Stat label="Budget" value={summary.budget} />
         <Stat
-          label="Residuo"
+          label="Disponibili"
           value={summary.remaining}
           highlight={over ? 'bad' : 'good'}
         />
@@ -203,7 +229,7 @@ function BudgetCard({ summary }: { summary: RosterSummary }) {
         role="progressbar"
         aria-valuenow={summary.spent}
         aria-valuemin={0}
-        aria-valuemax={summary.budget}
+        aria-valuemax={total}
         aria-label="Budget speso"
       >
         <div
@@ -211,6 +237,13 @@ function BudgetCard({ summary }: { summary: RosterSummary }) {
           style={{ width: `${percent}%` }}
         />
       </div>
+      {summary.balance !== 0 && (
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+          Saldo scambi: {formatDelta(summary.balance)} crediti. Il valore rosa è
+          la somma dei costi d&apos;asta, anche dei giocatori arrivati con gli
+          scambi: per questo può superare il budget.
+        </p>
+      )}
     </Card>
   )
 }

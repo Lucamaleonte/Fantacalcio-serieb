@@ -2,6 +2,7 @@ import { useCallback, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import LeagueSettingsCard from './admin/LeagueSettingsCard'
 import MembersCard from './admin/MembersCard'
+import TradeMarketCard from './admin/TradeMarketCard'
 import PageTitle from '../components/PageTitle'
 import { Alert, Button, Card, Field, Select, Sheet } from '../components/ui'
 import { useCurrentLeague } from '../hooks/league'
@@ -87,6 +88,7 @@ export default function Admin() {
           <CalendarCard leagueId={league.id} data={data} onChanged={reload} />
         </>
       )}
+      <TradeMarketCard showLink />
       <MembersCard onChanged={reload} />
       <LeagueSettingsCard />
     </section>

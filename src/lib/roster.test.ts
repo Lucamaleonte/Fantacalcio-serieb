@@ -51,6 +51,17 @@ describe('summarizeRoster', () => {
     const s = summarizeRoster([], league)
     expect(s.spent).toBe(0)
     expect(s.remaining).toBe(500)
+    expect(s.balance).toBe(0)
+  })
+
+  it('dopo gli scambi il valore rosa supera il budget, i crediti no', () => {
+    // budget speso tutto (500), poi scambio 1 -> 7: valore 506, saldo +6
+    const s = summarizeRoster([entry('P', 499), entry('D', 7, 1)], league, 6)
+    expect(s.spent).toBe(506)
+    expect(s.remaining).toBe(0)
+    expect(validateAddition(s, 'C', 1)).toBe(
+      'Budget insufficiente: restano 0 crediti',
+    )
   })
 })
 

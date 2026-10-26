@@ -18,32 +18,41 @@ import { supabase } from '../lib/supabase'
 import type { Fixture, Matchday } from '../lib/types'
 
 async function loadHome(leagueId: string, userId: string) {
-  const [matchdays, lineups, fixtures, members, standings] = await Promise.all([
-    supabase
-      .from('matchdays')
-      .select('id, league_id, number, deadline, status')
-      .eq('league_id', leagueId),
-    supabase
-      .from('lineups')
-      .select('matchday_id')
-      .eq('league_id', leagueId)
-      .eq('user_id', userId),
-    supabase
-      .from('fixtures')
-      .select(
-        'id, matchday_id, home_user_id, away_user_id, home_points, away_points, home_goals, away_goals',
-      )
-      .eq('league_id', leagueId)
-      .or(`home_user_id.eq.${userId},away_user_id.eq.${userId}`),
-    supabase
-      .from('league_members')
-      .select('user_id, team_name, logo_path, calendar_position')
-      .eq('league_id', leagueId),
-    supabase.from('standings').select('*').eq('league_id', leagueId),
-  ])
-  for (const r of [matchdays, lineups, fixtures, members, standings])
+  const [matchdays, lineups, fixtures, members, standings, trades] =
+    await Promise.all([
+      supabase
+        .from('matchdays')
+        .select('id, league_id, number, deadline, status')
+        .eq('league_id', leagueId),
+      supabase
+        .from('lineups')
+        .select('matchday_id')
+        .eq('league_id', leagueId)
+        .eq('user_id', userId),
+      supabase
+        .from('fixtures')
+        .select(
+          'id, matchday_id, home_user_id, away_user_id, home_points, away_points, home_goals, away_goals',
+        )
+        .eq('league_id', leagueId)
+        .or(`home_user_id.eq.${userId},away_user_id.eq.${userId}`),
+      supabase
+        .from('league_members')
+        .select('user_id, team_name, logo_path, calendar_position')
+        .eq('league_id', leagueId),
+      supabase.from('standings').select('*').eq('league_id', leagueId),
+      // Proposte di scambio da valutare
+      supabase
+        .from('trades')
+        .select('id')
+        .eq('league_id', leagueId)
+        .eq('receiver_id', userId)
+        .eq('status', 'pending'),
+    ])
+  for (const r of [matchdays, lineups, fixtures, members, standings, trades])
     if (r.error) throw r.error
   return {
+    pendingTrades: (trades.data as { id: string }[]).length,
     teamOrder: calendarTeams(
       members.data as { user_id: string; calendar_position: number | null }[],
     ),
@@ -201,6 +210,22 @@ export default function Home() {
           </Link>
         )}
       </Card>
+
+      {data && (league.trade_market_open || data.pendingTrades > 0) && (
+        <Card title="Mercato scambi">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {data.pendingTrades > 0
+              ? `Hai ${data.pendingTrades} ${data.pendingTrades === 1 ? 'proposta' : 'proposte'} di scambio da valutare.`
+              : 'Il mercato è aperto: puoi proporre scambi alle altre squadre.'}
+          </p>
+          <Link
+            to="/mercato"
+            className="mt-2 inline-block text-sm font-semibold text-green-700 underline dark:text-green-400"
+          >
+            Vai al mercato
+          </Link>
+        </Card>
+      )}
 
       {data && data.standings.length > 0 && (
         <Card title="Classifica">

@@ -19,6 +19,8 @@ export interface League {
   goal_threshold: number
   goal_step: number
   rosters_locked: boolean
+  // Mercato scambi aperto (si cambia solo con la RPC set_trade_market)
+  trade_market_open: boolean
 }
 
 export interface Membership {

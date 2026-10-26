@@ -14,6 +14,7 @@ import Giocatori from './pages/Giocatori'
 import Home from './pages/Home'
 import ImportaGiocatori from './pages/ImportaGiocatori'
 import Login from './pages/Login'
+import Mercato from './pages/Mercato'
 import Onboarding from './pages/Onboarding'
 import Partita from './pages/Partita'
 import Profilo from './pages/Profilo'
@@ -84,6 +85,7 @@ function LeagueRoutes() {
           }
         />
         <Route path="rosa" element={<Rosa />} />
+        <Route path="mercato" element={<Mercato />} />
         <Route path="formazione" element={<Formazione />} />
         <Route path="classifica" element={<Classifica />} />
         <Route path="calendario" element={<Calendario />} />

@@ -57,6 +57,10 @@ Stack: Vite + React + TypeScript, Tailwind CSS, Supabase (Auth + Postgres + Row 
 
 Admin → **Impostazioni lega** (budget, giocatori per ruolo, moduli, sostituzioni, valore senza voto, soglie dei gol) e **Membri** (rimozione di una squadra: si cancellano anche rosa, formazioni, punteggi e le sue partite).
 
+### Mercato scambi
+
+Admin → **Mercato scambi** → **Apri mercato** / **Chiudi mercato** (lo stesso pulsante è in cima alla pagina Mercato). A mercato aperto le squadre si propongono scambi; chiudendolo, le proposte ancora in attesa decadono (gli scambi eseguiti restano). Nello **Storico scambi** l'admin può **annullare** uno scambio eseguito: i giocatori tornano alle squadre di prima (se sono ancora lì) e i saldi tornano come prima; le formazioni già salvate non vengono ripristinate.
+
 ### Eliminare una giornata
 
 Solo se non è calcolata. Per una giornata già calcolata: Admin → toccala → stato **Aperta** → Salva (esce dalla classifica) → **Elimina giornata**.
@@ -65,7 +69,8 @@ Solo se non è calcolata. Per una giornata già calcolata: Admin → toccala →
 
 - **Home:** la giornata dopo l'ultima calcolata (con l'avversario dal sorteggio anche se l'admin non l'ha ancora creata), conto alla rovescia, stato della formazione (inserita / mancante), mini classifica.
 - **Giocatori:** ricerca e filtri (ruolo, squadra, svincolati / già presi).
-- **Rosa:** la propria e quelle degli altri, in sola lettura.
+- **Rosa:** la propria e quelle degli altri, in sola lettura. In alto valore rosa (somma dei costi d'asta), budget e crediti disponibili; con gli scambi compare anche il saldo scambi.
+- **Mercato** (Rosa → Mercato scambi, o la scheda in Home quando è aperto o ci sono proposte): **+ Nuova proposta di scambio** → scegli la squadra, i giocatori che dai e quelli che chiedi (almeno uno per parte), un messaggio facoltativo → **Invia**. Chi la riceve la trova in **Proposte ricevute** e può **Accettare** (scambio eseguito subito) o **Rifiutare**; chi l'ha inviata può **Ritirarla** finché è in attesa. Le proposte le vedono solo le due squadre, gli scambi eseguiti tutta la lega (**Storico scambi**). Dopo lo scambio ogni rosa deve rispettare i limiti per ruolo (con rose piene: difensore per difensore, ecc.). Chi viene ceduto esce dalle formazioni non ancora chiuse della squadra che lo cede; le giornate già chiuse restano come sono. Una proposta decade se uno dei suoi giocatori viene scambiato in un'altra proposta o se il mercato chiude.
 - **Formazione:** scegli il modulo, tocca gli slot per scegliere i titolari, ordina la panchina (l'ordine decide le sostituzioni) e **Salva**. **Copia la formazione della giornata N** ricarica l'ultima formazione salvata (chi non è più in rosa viene tolto); poi va salvata. Il riquadro **Avversario** apre la sfida; sotto ci sono le formazioni di tutte le squadre. Dopo la scadenza è in sola lettura.
 - **Classifica:** punti, partite, gol, fantapunti; risultati di ogni giornata con il dettaglio (titolari, voto base, fantavoto, bonus/malus, sostituzioni).
 - **Calendario** (scheda accanto a Classifica, o Home → Calendario completo): tutte le giornate con gli avversari, anche quelle non ancora create (33 in tutto, dalla 6ª alla 38ª di Serie B, calcolate dal sorteggio), e i risultati di quelle calcolate. Si può scegliere tra "Le mie partite" e "Tutte le partite"; è evidenziata la giornata dopo l'ultima calcolata.
@@ -109,6 +114,8 @@ Valori iniziali (modificabili da Admin → Impostazioni lega, salvo dove indicat
 | Voti                                  | Si usa il fantavoto importato (bonus/malus già inclusi)              |
 | Giocatore in più squadre              | No (fisso)                                                           |
 | Rose                                  | Le inserisce e modifica solo l'admin (fisso)                         |
+| Scambi                                | Tra due squadre, a mercato aperto (lo apre e chiude l'admin)         |
+| Costo dopo uno scambio                | Resta quello d'asta; i crediti disponibili non cambiano (fisso)      |
 | Classifica                            | Scontri diretti: vittoria 3, pareggio 1, sconfitta 0 (fisso)         |
 | Gol                                   | 66 fantapunti = 1 gol, poi +1 ogni 6 punti (72 = 2, 78 = 3…)         |
 | Parità in classifica                  | Fantapunti totali, poi differenza reti, poi gol fatti (fisso)        |
@@ -143,12 +150,13 @@ Le migrazioni sono in `supabase/migrations/`, in ordine di nome. Ogni modifica a
 | `20261008120000_lineups_visible_to_all.sql` | Formazioni di tutti visibili anche prima della scadenza                            |
 | `20261008130000_team_logos.sql`             | Loghi: colonna `logo_path`, bucket Storage `team-logos` e regole di caricamento    |
 | `20261013120000_vote_events.sql`            | Bonus e malus dei voti: colonna `player_votes.events` e `import_votes` aggiornata  |
+| `20261026120000_trade_market.sql`           | Mercato scambi: tabelle `trades`/`trade_players`, saldo scambi, RPC degli scambi   |
 
 **Eseguirle:** Supabase → **SQL Editor** → **New query** → incolla il contenuto del file → **Run**, un file alla volta e in ordine. In alternativa, con la [Supabase CLI](https://supabase.com/docs/guides/cli): `supabase link` e `supabase db push`.
 
 > Se l'integrazione GitHub di Supabase ha il deploy automatico attivo, le migrazioni vengono applicate al push su `main`: in quel caso non eseguirle anche a mano.
 
-**Verificare la sicurezza:** esegui `supabase/tests/rls_test.sql` nel SQL Editor. Crea utenti e dati di prova in una transazione e alla fine la annulla (non lascia nulla, non tocca la lega vera). Nessun errore = test superati; altrimenti compare `TEST FALLITO: <descrizione>`. Verifica, tra l'altro: un estraneo non vede nulla, codice invito errato rifiutato, un membro non modifica nessuna rosa né le impostazioni né il proprio ruolo, budget / limiti per ruolo / giocatore unico, formazioni valide e chiuse dopo la scadenza (anche chiamando l'API direttamente), formazioni altrui visibili ai membri ma non modificabili, voti e punteggi scrivibili solo dall'admin, ricalcolo senza duplicati, utente non loggato senza accesso.
+**Verificare la sicurezza:** esegui `supabase/tests/rls_test.sql` nel SQL Editor. Crea utenti e dati di prova in una transazione e alla fine la annulla (non lascia nulla, non tocca la lega vera). Nessun errore = test superati; altrimenti compare `TEST FALLITO: <descrizione>`. Verifica, tra l'altro: un estraneo non vede nulla, codice invito errato rifiutato, un membro non modifica nessuna rosa né le impostazioni né il proprio ruolo, budget / limiti per ruolo / giocatore unico, formazioni valide e chiuse dopo la scadenza (anche chiamando l'API direttamente), formazioni altrui visibili ai membri ma non modificabili, voti e punteggi scrivibili solo dall'admin, ricalcolo senza duplicati, mercato scambi (proposte visibili solo alle due squadre, limiti per ruolo, saldi e crediti disponibili, formazioni aperte ripulite, ritiro, rifiuto, annullamento dell'admin, mercato chiuso), utente non loggato senza accesso.
 
 ## Sviluppo
 
@@ -191,6 +199,7 @@ I moduli in `src/lib` usati dai test non devono importare il client Supabase: in
 
 - **Classifica a scontri diretti** (invece che a punti totali), con calendario automatico e conversione fantapunti → gol.
 - **Rose solo admin:** l'asta è dal vivo e l'admin inserisce tutto; il blocco delle rose non serve.
+- **Scambi e crediti:** ogni giocatore mantiene il costo d'asta (conta per un eventuale svincolo), quindi dopo uno scambio il valore della rosa può superare il budget. La differenza va nel **saldo scambi** della squadra (`league_members.trade_balance`): crediti disponibili = budget + saldo scambi − valore rosa, e uno scambio non li cambia mai. Il controllo del budget all'asta usa la stessa formula.
 - **Una sola lega** per progetto, per evitare che sconosciuti ne creino altre.
 - **Calcolo nell'app dell'admin** (funzione TypeScript pura e testata); il database salva i punteggi e calcola gol, risultati e classifica.
 - **Inserimento manuale dei voti** come ripiego all'import.

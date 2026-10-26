@@ -18,6 +18,7 @@ const league = {
   goal_threshold: 66,
   goal_step: 6,
   rosters_locked: false,
+  trade_market_open: false,
 } satisfies League
 
 describe('settingsForm / validateSettings', () => {

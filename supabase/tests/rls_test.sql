@@ -579,6 +579,225 @@ select pg_temp.check(
 );
 set local role authenticated;
 
+-- -------------------------------------------------------------
+-- Mercato scambi
+-- Rose a questo punto: B = P1 (20), P2, D1-D5, C1-C4, A1, A2 (1 ciascuno),
+-- valore 32; A = A3 (5). Giornata 2 aperta con la formazione di B.
+-- -------------------------------------------------------------
+reset role;
+create function pg_temp.trade(p_id text) returns uuid language sql stable as $$
+  select current_setting('test.trade_' || p_id)::uuid
+$$;
+create function pg_temp.save_trade(p_id text, p_trade uuid) returns void language sql as $$
+  select set_config('test.trade_' || p_id, p_trade::text, true)
+$$;
+create function pg_temp.owner(p_name text) returns uuid language sql stable as $$
+  select user_id from public.roster_entries where league_id = pg_temp.lg() and player_id = pg_temp.pl(p_name)
+$$;
+create function pg_temp.balance(p text) returns integer language sql stable as $$
+  select trade_balance from public.league_members where league_id = pg_temp.lg() and user_id = pg_temp.uid(p)
+$$;
+create function pg_temp.trade_status(p_id text) returns text language sql stable as $$
+  select status from public.trades where id = pg_temp.trade(p_id)
+$$;
+set local role authenticated;
+
+-- Mercato chiuso: niente proposte; lo apre solo l'admin
+select pg_temp.login('b');
+select pg_temp.expect_error(
+  format('select public.propose_trade(%L, %L, %L::uuid[], %L::uuid[])', pg_temp.lg(), pg_temp.uid('a'),
+    array[pg_temp.pl('Test A1')], array[pg_temp.pl('Test A3')]),
+  'proposta con il mercato chiuso'
+);
+select pg_temp.expect_error(format('select public.set_trade_market(%L, true)', pg_temp.lg()), 'membro apre il mercato');
+select pg_temp.expect_error(
+  format('update public.leagues set trade_market_open = true where id = %L', pg_temp.lg()),
+  'mercato aperto senza la RPC'
+);
+select pg_temp.expect_error(
+  format('update public.league_members set trade_balance = 100 where league_id = %L and user_id = %L',
+    pg_temp.lg(), pg_temp.uid('b')),
+  'membro cambia il proprio saldo scambi'
+);
+
+select pg_temp.login('a');
+select pg_temp.expect_error(
+  format('update public.league_members set trade_balance = 100 where league_id = %L and user_id = %L',
+    pg_temp.lg(), pg_temp.uid('b')),
+  'admin cambia il saldo scambi senza scambio'
+);
+select public.set_trade_market(pg_temp.lg(), true);
+select pg_temp.check((select trade_market_open from public.leagues where id = pg_temp.lg()), 'mercato non aperto');
+-- Tutte e due le squadre hanno speso tutto il budget
+update public.leagues set budget = 32 where id = pg_temp.lg();
+
+-- Proposte non valide
+select pg_temp.login('b');
+select pg_temp.expect_error(
+  format('select public.propose_trade(%L, %L, %L::uuid[], %L::uuid[])', pg_temp.lg(), pg_temp.uid('a'),
+    array[pg_temp.pl('Test A3')], array[pg_temp.pl('Test A1')]),
+  'offerto un giocatore non suo'
+);
+select pg_temp.expect_error(
+  format('select public.propose_trade(%L, %L, %L::uuid[], %L::uuid[])', pg_temp.lg(), pg_temp.uid('a'),
+    array[pg_temp.pl('Test A1')], array[pg_temp.pl('Test P3')]),
+  'chiesto uno svincolato'
+);
+select pg_temp.expect_error(
+  format('select public.propose_trade(%L, %L, %L::uuid[], %L::uuid[])', pg_temp.lg(), pg_temp.uid('b'),
+    array[pg_temp.pl('Test A1')], array[pg_temp.pl('Test A2')]),
+  'scambio con se stesso'
+);
+select pg_temp.expect_error(
+  format('select public.propose_trade(%L, %L, %L::uuid[], %L::uuid[])', pg_temp.lg(), pg_temp.uid('a'),
+    array[pg_temp.pl('Test A1')], '{}'),
+  'scambio senza contropartita'
+);
+select pg_temp.expect_error(
+  format('select public.propose_trade(%L, %L, %L::uuid[], %L::uuid[])', pg_temp.lg(), pg_temp.uid('c'),
+    array[pg_temp.pl('Test A1')], array[pg_temp.pl('Test A3')]),
+  'scambio con un estraneo'
+);
+select pg_temp.expect_error(
+  format('insert into public.trades (league_id, proposer_id, receiver_id) values (%L, %L, %L)',
+    pg_temp.lg(), pg_temp.uid('b'), pg_temp.uid('a')),
+  'proposta scritta senza la RPC'
+);
+
+-- Limite per ruolo dopo lo scambio (attaccanti = 2: B ne ha già 2)
+select pg_temp.login('a');
+update public.leagues set n_att = 2 where id = pg_temp.lg();
+select pg_temp.login('b');
+select pg_temp.expect_error(
+  format('select public.propose_trade(%L, %L, %L::uuid[], %L::uuid[])', pg_temp.lg(), pg_temp.uid('a'),
+    array[pg_temp.pl('Test D1')], array[pg_temp.pl('Test A3')]),
+  'scambio oltre il limite del ruolo'
+);
+select pg_temp.check((select count(*) from public.trades) = 0, 'proposta non valida salvata');
+
+-- Proposta valida: B dà A1 (1 credito) e chiede A3 (5 crediti); una seconda
+-- proposta con gli stessi giocatori decadrà quando la prima è accettata
+select pg_temp.save_trade('1', public.propose_trade(pg_temp.lg(), pg_temp.uid('a'),
+  array[pg_temp.pl('Test A1')], array[pg_temp.pl('Test A3')], '  Ci stai?  '));
+select pg_temp.save_trade('2', public.propose_trade(pg_temp.lg(), pg_temp.uid('a'),
+  array[pg_temp.pl('Test A1'), pg_temp.pl('Test C1')], array[pg_temp.pl('Test A3')]));
+select pg_temp.check(
+  (select message from public.trades where id = pg_temp.trade('1')) = 'Ci stai?',
+  'messaggio della proposta'
+);
+select pg_temp.check(
+  (select count(*) from public.trade_players where trade_id = pg_temp.trade('1')) = 2,
+  'giocatori della proposta'
+);
+
+-- Le proposte le vedono solo le due squadre
+select pg_temp.login('d');
+select pg_temp.check((select count(*) from public.trades) = 0, 'terza squadra vede le proposte');
+select pg_temp.check((select count(*) from public.trade_players) = 0, 'terza squadra vede i giocatori proposti');
+select pg_temp.expect_error(format('select public.respond_trade(%L, true)', pg_temp.trade('1')), 'terza squadra accetta');
+select pg_temp.login('c');
+select pg_temp.check((select count(*) from public.trades) = 0, 'estraneo vede le proposte');
+select pg_temp.login('b');
+select pg_temp.check((select count(*) from public.trades) = 2, 'chi propone non vede le proprie proposte');
+select pg_temp.expect_error(format('select public.respond_trade(%L, true)', pg_temp.trade('1')), 'chi propone accetta da solo');
+select pg_temp.login('a');
+select pg_temp.check((select count(*) from public.trades) = 2, 'chi riceve non vede le proposte');
+
+-- A accetta: giocatori scambiati, valore rosa oltre il budget, crediti disponibili invariati
+select public.respond_trade(pg_temp.trade('1'), true);
+select pg_temp.check(pg_temp.trade_status('1') = 'accepted', 'proposta non accettata');
+select pg_temp.check(pg_temp.owner('Test A3') = pg_temp.uid('b'), 'A3 non passato a B');
+select pg_temp.check(pg_temp.owner('Test A1') = pg_temp.uid('a'), 'A1 non passato ad A');
+select pg_temp.check(
+  (select cost from public.roster_entries where league_id = pg_temp.lg() and player_id = pg_temp.pl('Test A3')) = 5,
+  'il giocatore scambiato perde il costo d''asta'
+);
+select pg_temp.check(pg_temp.balance('b') = 4 and pg_temp.balance('a') = -4, 'saldo scambi');
+select pg_temp.check(
+  (select sum(cost) from public.roster_entries where league_id = pg_temp.lg() and user_id = pg_temp.uid('b')) = 36,
+  'valore rosa di B dopo lo scambio'
+);
+select pg_temp.check(pg_temp.trade_status('2') = 'expired', 'proposta con giocatori già scambiati ancora valida');
+select pg_temp.expect_error(format('select public.respond_trade(%L, true)', pg_temp.trade('2')), 'proposta decaduta accettata');
+
+-- Formazioni: A1 tolto da quella aperta di B, resta in quella già chiusa
+select pg_temp.check(
+  (select count(*) from public.lineup_players lp join public.lineups l on l.id = lp.lineup_id
+   where l.matchday_id = pg_temp.md(2) and l.user_id = pg_temp.uid('b')) = 10,
+  'giocatore ceduto ancora nella formazione aperta'
+);
+select pg_temp.check(
+  exists (select 1 from public.lineup_players lp join public.lineups l on l.id = lp.lineup_id
+          where l.matchday_id = pg_temp.md(1) and l.user_id = pg_temp.uid('b') and lp.player_id = pg_temp.pl('Test A1')),
+  'giocatore ceduto tolto da una formazione già chiusa'
+);
+
+-- Lo scambio eseguito lo vede tutta la lega
+select pg_temp.login('d');
+select pg_temp.check(
+  (select count(*) from public.trades) = 1 and (select count(*) from public.trade_players) = 2,
+  'terza squadra non vede lo scambio eseguito'
+);
+
+-- Asta (admin): i crediti disponibili tengono conto del saldo scambi.
+-- B: 32 + 4 - 36 = 0 disponibili; A: 32 - 4 - 1 = 27
+select pg_temp.login('a');
+update public.leagues set n_gk = 3 where id = pg_temp.lg();
+select pg_temp.expect_error(
+  format('insert into public.roster_entries (league_id, user_id, player_id, cost) values (%L, %L, %L, 1)',
+    pg_temp.lg(), pg_temp.uid('b'), pg_temp.pl('Test P3')),
+  'acquisto oltre i crediti disponibili dopo lo scambio'
+);
+select pg_temp.expect_error(
+  format('insert into public.roster_entries (league_id, user_id, player_id, cost) values (%L, %L, %L, 28)',
+    pg_temp.lg(), pg_temp.uid('a'), pg_temp.pl('Test P3')),
+  'acquisto oltre i crediti disponibili di chi ha ceduto valore'
+);
+insert into public.roster_entries (league_id, user_id, player_id, cost)
+values (pg_temp.lg(), pg_temp.uid('a'), pg_temp.pl('Test P3'), 27);
+delete from public.roster_entries where league_id = pg_temp.lg() and player_id = pg_temp.pl('Test P3');
+
+-- Ritiro e rifiuto
+select pg_temp.login('b');
+select pg_temp.save_trade('3', public.propose_trade(pg_temp.lg(), pg_temp.uid('a'),
+  array[pg_temp.pl('Test A2')], array[pg_temp.pl('Test A1')]));
+select pg_temp.save_trade('4', public.propose_trade(pg_temp.lg(), pg_temp.uid('a'),
+  array[pg_temp.pl('Test A3')], array[pg_temp.pl('Test A1')]));
+select public.withdraw_trade(pg_temp.trade('3'));
+select pg_temp.check(pg_temp.trade_status('3') = 'withdrawn', 'proposta non ritirata');
+select pg_temp.login('a');
+select pg_temp.expect_error(format('select public.withdraw_trade(%L)', pg_temp.trade('4')), 'chi riceve ritira la proposta');
+select pg_temp.expect_error(format('select public.respond_trade(%L, true)', pg_temp.trade('3')), 'proposta ritirata accettata');
+select public.respond_trade(pg_temp.trade('4'), false);
+select pg_temp.check(pg_temp.trade_status('4') = 'rejected', 'proposta non rifiutata');
+select pg_temp.check(pg_temp.owner('Test A3') = pg_temp.uid('b'), 'proposta rifiutata eseguita');
+select pg_temp.login('d');
+select pg_temp.check((select count(*) from public.trades) = 1, 'terza squadra vede proposte rifiutate o ritirate');
+
+-- Annullamento: solo l'admin; giocatori e saldi tornano come prima
+select pg_temp.login('b');
+select pg_temp.expect_error(format('select public.cancel_trade(%L)', pg_temp.trade('1')), 'membro annulla uno scambio');
+select pg_temp.login('a');
+select pg_temp.expect_error(format('select public.cancel_trade(%L)', pg_temp.trade('4')), 'annullato uno scambio non eseguito');
+select public.cancel_trade(pg_temp.trade('1'));
+select pg_temp.check(pg_temp.trade_status('1') = 'cancelled', 'scambio non annullato');
+select pg_temp.check(
+  pg_temp.owner('Test A1') = pg_temp.uid('b') and pg_temp.owner('Test A3') = pg_temp.uid('a'),
+  'annullamento: giocatori non tornati indietro'
+);
+select pg_temp.check(pg_temp.balance('b') = 0 and pg_temp.balance('a') = 0, 'annullamento: saldi non azzerati');
+select pg_temp.expect_error(format('select public.cancel_trade(%L)', pg_temp.trade('1')), 'scambio annullato due volte');
+
+-- Chiudendo il mercato le proposte in attesa decadono
+select pg_temp.login('b');
+select pg_temp.save_trade('5', public.propose_trade(pg_temp.lg(), pg_temp.uid('a'),
+  array[pg_temp.pl('Test A1')], array[pg_temp.pl('Test A3')]));
+select pg_temp.login('a');
+select public.set_trade_market(pg_temp.lg(), false);
+select pg_temp.check(pg_temp.trade_status('5') = 'expired', 'proposta ancora in attesa a mercato chiuso');
+select pg_temp.expect_error(format('select public.respond_trade(%L, true)', pg_temp.trade('5')), 'scambio accettato a mercato chiuso');
+update public.leagues set budget = 500, n_att = 6 where id = pg_temp.lg();
+
 -- Membri: solo l'admin rimuove, e non se stesso
 select pg_temp.login('b');
 delete from public.league_members where user_id = pg_temp.uid('d');

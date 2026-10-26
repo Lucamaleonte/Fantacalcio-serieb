@@ -13,10 +13,13 @@ export interface RosterEntry {
 
 export type RoleCounts = Record<PlayerRole, number>
 
+// spent = valore della rosa (costi d'asta), può superare il budget dopo gli scambi.
+// balance = saldo scambi: remaining (crediti disponibili) = budget + balance - spent
 export interface RosterSummary {
   spent: number
   remaining: number
   budget: number
+  balance: number
   counts: RoleCounts
   limits: RoleCounts
   size: number
@@ -30,6 +33,7 @@ export function roleLimits(league: League): RoleCounts {
 export function summarizeRoster(
   entries: RosterEntry[],
   league: League,
+  balance = 0,
 ): RosterSummary {
   const counts: RoleCounts = { P: 0, D: 0, C: 0, A: 0 }
   let spent = 0
@@ -40,8 +44,9 @@ export function summarizeRoster(
   const limits = roleLimits(league)
   return {
     spent,
-    remaining: league.budget - spent,
+    remaining: league.budget + balance - spent,
     budget: league.budget,
+    balance,
     counts,
     limits,
     size: entries.length,
