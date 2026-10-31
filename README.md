@@ -209,3 +209,5 @@ I moduli in `src/lib` usati dai test non devono importare il client Supabase: in
 ## Licenza
 
 [MIT](LICENSE)
+
+App non ufficiale, non affiliata alla Lega B. Il logo Serie BKT appartiene ai rispettivi proprietari e non è coperto dalla licenza MIT.
